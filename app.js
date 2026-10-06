@@ -27,7 +27,10 @@
   function readStore() {
     try {
       var data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
-      if (data && data.version === 1 && data.entries && typeof data.entries === "object") return data;
+      if (data && data.version === 1 && data.entries && typeof data.entries === "object") {
+        if (!data.quotes || typeof data.quotes !== "object") data.quotes = {};
+        return data;
+      }
     } catch (e) {}
     return JournalCore.blankStore();
   }
@@ -365,6 +368,14 @@
     paintParent();
     paintCompletion();
     els.form.textContent = "";
+    if (cur.kind === "day") {
+      var quote = quoteText(cur.key);
+      if (quote) {
+        var block = node("blockquote", "quote");
+        block.appendChild(node("p", "", quote));
+        els.form.appendChild(block);
+      }
+    }
     if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key));
     schema.sections.forEach(function (section) {
       var box = card(section.title);
@@ -377,6 +388,12 @@
     if (schema.reviewPrevTodos) els.form.appendChild(mountReview(cur.key));
   }
 
+  function quoteText(key) {
+    var quote = store.quotes && store.quotes[key];
+    if (!quote || typeof quote.text !== "string") return "";
+    return quote.text.trim();
+  }
+
   function stamp() {
     var now = new Date();
     els.sync.textContent = "Synced " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
@@ -384,12 +401,12 @@
 
   function mergeIn(remote) {
     var key = cur.key;
-    var before = key ? JSON.stringify(store.entries[key] || null) : "";
+    var before = key ? JSON.stringify({ entry: store.entries[key] || null, quote: quoteText(key) }) : "";
     var after;
     store = JournalCore.mergeStores(store, remote);
     persist();
     if (key && store.entries) {
-      after = JSON.stringify(store.entries[key] || null);
+      after = JSON.stringify({ entry: store.entries[key] || null, quote: quoteText(key) });
       if (before !== after) render();
       else {
         paintCompletion();

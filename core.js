@@ -171,7 +171,7 @@
   }
 
   function blankStore() {
-    return { version: 1, entries: {} };
+    return { version: 1, entries: {}, quotes: {} };
   }
 
   function stamp(entry) {
@@ -196,9 +196,17 @@
     return copy;
   }
 
+  function mapOf(store, key) {
+    if (!store || !store[key] || typeof store[key] !== "object") return {};
+    return store[key];
+  }
+
   function entriesOf(store) {
-    if (!store || !store.entries || typeof store.entries !== "object") return {};
-    return store.entries;
+    return mapOf(store, "entries");
+  }
+
+  function quotesOf(store) {
+    return mapOf(store, "quotes");
   }
 
   function versionOf(store) {
@@ -206,11 +214,9 @@
     return typeof version === "number" ? version : 1;
   }
 
-  function mergeStores(local, remote) {
-    var left = entriesOf(local);
-    var right = entriesOf(remote);
+  function mergeMap(left, right) {
     var names = Object.keys(left).concat(Object.keys(right));
-    var entries = {};
+    var out = {};
     var seen = Object.create(null);
     var i;
     for (i = 0; i < names.length; i++) {
@@ -220,9 +226,17 @@
       var inLeft = Object.prototype.hasOwnProperty.call(left, key);
       var inRight = Object.prototype.hasOwnProperty.call(right, key);
       var chosen = inLeft && inRight ? choose(left[key], right[key]) : (inLeft ? left[key] : right[key]);
-      entries[key] = copyEntry(chosen);
+      out[key] = copyEntry(chosen);
     }
-    return { version: Math.max(versionOf(local), versionOf(remote)), entries: entries };
+    return out;
+  }
+
+  function mergeStores(local, remote) {
+    return {
+      version: Math.max(versionOf(local), versionOf(remote)),
+      entries: mergeMap(entriesOf(local), entriesOf(remote)),
+      quotes: mergeMap(quotesOf(local), quotesOf(remote))
+    };
   }
 
   var api = {
@@ -325,6 +339,22 @@
       { version: 1, entries: { k: { body: "none" } } }
     );
     assert.strictEqual(stampWins.entries.k.body, "has");
+
+    var quoteMerge = mergeStores(
+      {
+        version: 1,
+        entries: { "2026-10-06": { body: "day", updatedAt: "2026-10-06T12:00:00.000Z" } },
+        quotes: { "2026-10-06": { text: "old", updatedAt: "2026-10-06T01:00:00.000Z" } }
+      },
+      {
+        version: 1,
+        entries: { "2026-10-06": { body: "stale", updatedAt: "2026-10-06T08:00:00.000Z" } },
+        quotes: { "2026-10-06": { text: "new", updatedAt: "2026-10-06T09:00:00.000Z" } }
+      }
+    );
+    assert.strictEqual(quoteMerge.entries["2026-10-06"].body, "day");
+    assert.strictEqual(quoteMerge.quotes["2026-10-06"].text, "new");
+    assert.deepStrictEqual(blankStore().quotes, {});
 
     console.log("core ok");
   }

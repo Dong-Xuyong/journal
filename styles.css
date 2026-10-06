@@ -109,6 +109,18 @@ header [data-dong-theme-toggle] {
   content: "›";
 }
 
+.quote {
+  margin: 0 0 12px;
+  padding: 4px 0 4px 14px;
+  border-left: 3px solid hsl(var(--primary));
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.quote p {
+  margin: 0;
+}
+
 #parent-line {
   color: var(--text-dim);
   font-size: 0.9rem;

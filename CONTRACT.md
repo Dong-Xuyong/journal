@@ -7,6 +7,9 @@ Write the user's journal into the private GitHub repo `Dong-Xuyong/progress-sync
 ```json
 {
   "version": 1,
+  "quotes": {
+    "2026-10-06": { "text": "Quote of the day.", "updatedAt": "<ISO-8601>" }
+  },
   "entries": {
     "<key>": {
       "updatedAt": "<ISO-8601>",
@@ -26,6 +29,14 @@ Keys use the same names as the Obsidian notes.
 - Month: `YYYY-MM` (example `2026-10`)
 - Quarter: `YYYY-Q1` through `YYYY-Q4` (example `2026-Q4`)
 - Year: `YYYY` (example `2026`)
+
+## Quote of the day
+
+`quotes` is a sibling of `entries`. One object per day key. Grok writes this. The website shows `text` at the top of that day. It is not a field inside the day entry.
+
+- Put the words in `text`. Attribution can sit at the end of the same string.
+- Set `updatedAt` on the quote object. A newer stamp wins for that day only.
+- When you are only writing the quote, leave `entries` unchanged.
 
 ## Fields
 
