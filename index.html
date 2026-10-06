@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f4ef" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Journal" />
+  <title>Journal</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="dong-ui/theme.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="dong-ui/theme.js"></script>
+  <link rel="manifest" href="manifest.webmanifest" />
+</head>
+<body>
+  <header>
+    <h1>Journal</h1>
+    <span id="sync-label"></span>
+    <button type="button" data-dong-theme-toggle aria-label="Toggle color theme"></button>
+  </header>
+  <nav id="tabs" aria-label="Review period"></nav>
+  <div class="period-nav">
+    <button type="button" id="prev" aria-label="Previous">‹</button>
+    <h2 id="period-label"></h2>
+    <button type="button" id="today">Today</button>
+    <button type="button" id="next" aria-label="Next">›</button>
+  </div>
+  <p id="parent-line"></p>
+  <div id="completion"></div>
+  <main id="form"></main>
+  <footer>
+    <button type="button" id="btn-save">Save</button>
+    <button type="button" id="btn-load">Load</button>
+  </footer>
+  <script src="dong-ui/gh-sync.js"></script>
+  <script src="core.js"></script>
+  <script src="schemas.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
