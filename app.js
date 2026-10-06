@@ -371,7 +371,8 @@
     if (cur.kind === "day") {
       var quote = quoteText(cur.key);
       if (quote) {
-        var block = node("blockquote", "quote");
+        var block = node("section", "card quote");
+        block.appendChild(node("h3", "", "Quote of the day"));
         block.appendChild(node("p", "", quote));
         els.form.appendChild(block);
       }

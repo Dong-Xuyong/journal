@@ -110,15 +110,13 @@ header [data-dong-theme-toggle] {
 }
 
 .quote {
-  margin: 0 0 12px;
-  padding: 4px 0 4px 14px;
   border-left: 3px solid hsl(var(--primary));
-  color: var(--text-dim);
-  font-size: 0.95rem;
 }
 
 .quote p {
   margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.45;
 }
 
 #parent-line {
