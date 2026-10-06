@@ -2,7 +2,7 @@
  * dong-ui GitHub progress sync: one JSON file per app in a private repo.
  * The token lives in localStorage, shared by every app on this origin.
  *
- *   GhSync.save(appId, getPayload, applyPayload) -> Promise<message>
+ *   GhSync.save(appId, getPayload, applyPayload, { quiet }) -> Promise<message>
  *   GhSync.load(appId, applyPayload)             -> Promise<message>
  */
 (function (global) {
@@ -65,11 +65,12 @@
     });
   }
 
-  function save(appId, getPayload, applyPayload) {
+  function save(appId, getPayload, applyPayload, opts) {
     var cfg;
     if (
-      !global.confirm("Save " + appId + " progress to GitHub?") ||
-      !global.confirm("Are you sure? This updates the copy your other devices load.")
+      !(opts && opts.quiet) &&
+      (!global.confirm("Save " + appId + " progress to GitHub?") ||
+        !global.confirm("Are you sure? This updates the copy your other devices load."))
     ) {
       return Promise.reject(new Error("Save cancelled"));
     }

@@ -2,27 +2,35 @@
   "use strict";
 
   var STORE_KEY = "journal-v1";
+  var SAVE_DELAY = 2500;
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var ENJOY = [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]];
-  var STATUS = [["none", "Not started"], ["progress", "In progress"], ["done", "Done"], ["paused", "Paused"]];
+  var MOOD = ["😞", "😕", "😐", "🙂", "😄"];
+  var ENERGY = ["🪫", "😴", "🔋", "💪", "⚡"];
+  var ENJOY = { green: "🟢 Great", yellow: "🟡 Okay", red: "🔴 Rough" };
+  var STATUS = [["none", "⚪ Not started"], ["progress", "🔵 In progress"], ["done", "✅ Done"], ["paused", "⏸️ Paused"]];
 
   var els = {
     tabs: document.getElementById("tabs"),
     prev: document.getElementById("prev"),
     next: document.getElementById("next"),
     today: document.getElementById("today"),
+    icon: document.getElementById("hero-icon"),
     period: document.getElementById("period-label"),
     parent: document.getElementById("parent-line"),
     completion: document.getElementById("completion"),
     form: document.getElementById("form"),
     sync: document.getElementById("sync-label"),
-    save: document.getElementById("btn-save"),
-    load: document.getElementById("btn-load")
+    connect: document.getElementById("connect"),
+    connectBtn: document.getElementById("btn-connect")
   };
 
   var store = readStore();
   var cur = { kind: "", key: "" };
   var loading = false;
+  var saving = false;
+  var saveAgain = false;
+  var saveTimer = null;
+  var retried = false;
 
   function readStore() {
     try {
@@ -56,6 +64,11 @@
     return el;
   }
 
+  function hhmm() {
+    var now = new Date();
+    return String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  }
+
   function readRoute() {
     var hash = location.hash.replace(/^#/, "");
     var cut = hash.indexOf("/");
@@ -80,37 +93,41 @@
     return entry;
   }
 
-  function touch() {
-    ensure().updatedAt = new Date().toISOString();
-    persist();
-    paintParent();
-    paintCompletion();
-  }
-
-  function isScore(n) {
-    return n === 1 || n === 2 || n === 3 || n === 4 || n === 5;
-  }
-
-  function isFilled(field, value) {
-    var i, list;
-    if (field.type === "scale") return isScore(value);
-    if (field.type === "enjoy") return value === "green" || value === "yellow" || value === "red";
-    if (field.type === "text" || field.type === "area") return String(value == null ? "" : value).trim() !== "";
-    if (field.type === "trio") {
-      list = Array.isArray(value) ? value : [];
-      for (i = 0; i < list.length; i++) {
-        if (String(list[i] == null ? "" : list[i]).trim() !== "") return true;
-      }
-    }
-    return false;
-  }
-
   function fieldMap(entry) {
     return entry && entry.fields && typeof entry.fields === "object" ? entry.fields : {};
   }
 
   function todoList(entry) {
     return entry && Array.isArray(entry.todos) ? entry.todos : [];
+  }
+
+  function isScore(n) {
+    return n === 1 || n === 2 || n === 3 || n === 4 || n === 5;
+  }
+
+  function trioLines(value) {
+    return (Array.isArray(value) ? value : []).map(function (line) {
+      return String(line == null ? "" : line).trim();
+    }).filter(Boolean);
+  }
+
+  function isFilled(field, value) {
+    if (field.type === "scale") return isScore(value);
+    if (field.type === "enjoy") return Object.prototype.hasOwnProperty.call(ENJOY, value);
+    if (field.type === "trio") return trioLines(value).length > 0;
+    return String(value == null ? "" : value).trim() !== "";
+  }
+
+  function quoteText(key) {
+    var quote = store.quotes && store.quotes[key];
+    return quote && typeof quote.text === "string" ? quote.text.trim() : "";
+  }
+
+  function touch() {
+    ensure().updatedAt = new Date().toISOString();
+    persist();
+    paintCompletion();
+    scheduleSave();
   }
 
   function paintCompletion() {
@@ -121,44 +138,31 @@
     var total = 0;
     var filled = 0;
     var done = 0;
-    var s, f, i, field, pct, text, ring;
-    for (s = 0; s < schema.sections.length; s++) {
-      for (f = 0; f < schema.sections[s].fields.length; f++) {
-        field = schema.sections[s].fields[f];
-        if (field.type === "todos") continue;
+    var ring;
+    schema.sections.forEach(function (section) {
+      section.fields.forEach(function (field) {
+        if (field.type === "todos") return;
         total += 1;
         if (isFilled(field, fields[field.key])) filled += 1;
-      }
-    }
-    for (i = 0; i < todos.length; i++) if (todos[i].done) done += 1;
-    pct = total ? Math.round((filled * 100) / total) : 0;
-    text = filled + "/" + total + " \u00b7 " + (todos.length ? done + "/" + todos.length + " to-dos" : "0 to-dos");
+      });
+    });
+    todos.forEach(function (todo) { if (todo.done) done += 1; });
     els.completion.textContent = "";
     ring = node("div", "ring");
-    ring.style.setProperty("--p", String(pct));
+    ring.style.setProperty("--p", String(todos.length ? Math.round((done * 100) / todos.length) : 0));
     els.completion.appendChild(ring);
-    els.completion.appendChild(node("span", "", text));
+    els.completion.appendChild(node("span", "", "✍️ " + filled + "/" + total + " · ✅ " + done + "/" + todos.length));
   }
 
   function paintParent() {
     var spec = JournalSchemas[cur.kind].parent;
-    var pk, raw, line;
+    var pk, raw;
     els.parent.textContent = "";
     if (!spec) return;
     pk = JournalCore.parentKey(cur.key);
-    if (!pk) return;
-    raw = fieldMap(store.entries[pk])[spec.field];
-    line = String(raw == null ? "" : raw).split(/\r?\n/)[0].trim();
-    if (!line) return;
-    els.parent.textContent = spec.prefix + ": " + line;
-  }
-
-  function shortWd(dayKey) {
-    return WEEKDAYS[new Date(Date.UTC(+dayKey.slice(0, 4), +dayKey.slice(5, 7) - 1, +dayKey.slice(8, 10))).getUTCDay()];
-  }
-
-  function scoreText(n) {
-    return isScore(n) ? String(n) : "\u2014";
+    raw = pk ? fieldMap(store.entries[pk])[spec.field] : "";
+    raw = String(raw == null ? "" : raw).split(/\r?\n/)[0].trim();
+    if (raw) els.parent.textContent = spec.prefix + ": " + raw;
   }
 
   function card(title, extra) {
@@ -167,131 +171,161 @@
     return section;
   }
 
-  function markOn(buttons, active) {
-    var i;
-    for (i = 0; i < buttons.length; i++) buttons[i].classList.toggle("on", buttons[i] === active);
+  function meter(field, value) {
+    var faces = field.key === "energy" ? ENERGY : MOOD;
+    var box = node("div", "meter");
+    var text = node("div");
+    var bar = node("span", "bar");
+    var fill = node("i");
+    box.appendChild(node("span", "emo", faces[value - 1]));
+    text.appendChild(node("span", "lbl", field.label));
+    text.appendChild(node("b", "", value + "/5"));
+    fill.style.setProperty("--v", value * 20 + "%");
+    bar.appendChild(fill);
+    text.appendChild(bar);
+    box.appendChild(text);
+    return box;
   }
 
-  function fieldView(field, fields) {
-    var wrap = node("label", "field");
-    var value = fields[field.key];
-    var group, choices, inputs;
-    wrap.appendChild(node("span", "lbl", field.label || ""));
-    if (field.type === "scale" || field.type === "enjoy") {
-      group = node("div", field.type === "scale" ? "scale" : "enjoy");
-      choices = field.type === "scale" ? [1, 2, 3, 4, 5] : ENJOY;
-      choices.forEach(function (choice) {
-        var stored = field.type === "scale" ? choice : choice[0];
-        var className = field.type === "scale" ? "opt" : "opt " + choice[0];
-        var el;
-        if (value === stored) className += " on";
-        el = button(className, field.type === "scale" ? String(choice) : choice[1]);
-        el.addEventListener("click", function () {
-          ensure().fields[field.key] = stored;
-          markOn(group.querySelectorAll("button"), el);
-          touch();
-        });
-        group.appendChild(el);
-      });
-      wrap.appendChild(group);
-      return wrap;
+  function fieldView(field, value) {
+    var wrap = node("div", "field");
+    var list;
+    wrap.appendChild(node("span", "lbl", field.label));
+    if (field.type === "enjoy") {
+      wrap.appendChild(node("span", "chip", ENJOY[value]));
+    } else if (field.type === "trio") {
+      list = node("ul", "trio");
+      trioLines(value).forEach(function (line) { list.appendChild(node("li", "", line)); });
+      wrap.appendChild(list);
+    } else {
+      var lines = String(value).trim().split(/\r?\n/).filter(function (line) { return line.trim(); });
+      if (lines.length > 1 && lines.every(function (line) { return /^\s*[-*•]\s+/.test(line); })) {
+        list = node("ul", "bullets");
+        lines.forEach(function (line) { list.appendChild(node("li", "", line.replace(/^\s*[-*•]\s+/, ""))); });
+        wrap.appendChild(list);
+      } else {
+        wrap.appendChild(node("p", "val", String(value).trim()));
+      }
     }
-    if (field.type === "trio") {
-      inputs = [0, 1, 2].map(function (i) {
-        var list = Array.isArray(value) ? value : [];
-        var input = node("input");
-        input.type = "text";
-        input.value = list[i] == null ? "" : String(list[i]);
-        return input;
-      });
-      inputs.forEach(function (input) {
-        input.addEventListener("input", function () {
-          ensure().fields[field.key] = inputs.map(function (item) { return item.value; });
-          touch();
-        });
-        wrap.appendChild(input);
-      });
-      return wrap;
-    }
-    group = node(field.type === "area" ? "textarea" : "input");
-    if (field.type !== "area") group.type = "text";
-    group.value = value == null ? "" : String(value);
-    group.addEventListener("input", function () {
-      ensure().fields[field.key] = group.value;
-      touch();
-    });
-    wrap.appendChild(group);
     return wrap;
+  }
+
+  function fit(area) {
+    area.style.height = "auto";
+    area.style.height = area.scrollHeight + "px";
+  }
+
+  function fitAll() {
+    Array.prototype.forEach.call(els.form.querySelectorAll(".todo textarea"), fit);
   }
 
   function todoBlock(todo, withStatus) {
     var block = node("div");
-    var row = node("div", "todo");
+    var row = node("div", todo.done ? "todo done" : "todo");
     var check = node("input");
-    var text = node("input");
-    var status = null;
+    var text = node("textarea");
+    var del = button("del", "✕");
+    var status;
     check.type = "checkbox";
     check.checked = !!todo.done;
-    text.type = "text";
+    check.setAttribute("aria-label", "Done");
+    text.rows = 1;
     text.value = todo.text || "";
+    text.placeholder = "New to-do…";
+    text.setAttribute("aria-label", "To-do");
+    del.setAttribute("aria-label", "Delete to-do");
+    function setDone(done) {
+      todo.done = done;
+      check.checked = done;
+      row.classList.toggle("done", done);
+    }
     check.addEventListener("change", function () {
-      todo.done = check.checked;
+      setDone(check.checked);
+      if (withStatus) {
+        todo.status = check.checked ? "done" : "progress";
+        markStatus();
+      }
       touch();
     });
     text.addEventListener("input", function () {
-      todo.text = text.value;
+      todo.text = text.value.replace(/\n/g, " ");
+      if (todo.text !== text.value) text.value = todo.text;
+      fit(text);
       touch();
     });
-    row.appendChild(check);
-    row.appendChild(text);
-    row.appendChild(button("", "Delete"));
-    row.lastChild.addEventListener("click", function () {
+    requestAnimationFrame(function () { fit(text); });
+    del.addEventListener("click", function () {
       var entry = ensure();
       entry.todos = entry.todos.filter(function (item) { return item !== todo; });
       block.remove();
       touch();
     });
+    row.appendChild(check);
+    row.appendChild(text);
+    row.appendChild(del);
     block.appendChild(row);
+    function markStatus() {
+      if (!status) return;
+      Array.prototype.forEach.call(status.children, function (el, i) {
+        el.classList.toggle("on", STATUS[i][0] === (todo.status || "none"));
+      });
+    }
     if (withStatus) {
       status = node("div", "status");
       STATUS.forEach(function (pair) {
-        var el = button(todo.status === pair[0] ? "on" : "", pair[1]);
+        var el = button("", pair[1]);
         el.addEventListener("click", function () {
           todo.status = pair[0];
-          todo.done = pair[0] === "done";
-          check.checked = todo.done;
-          markOn(status.querySelectorAll("button"), el);
+          setDone(pair[0] === "done");
+          markStatus();
           touch();
         });
         status.appendChild(el);
       });
+      markStatus();
       block.appendChild(status);
     }
+    block.focusText = function () { text.focus(); };
     return block;
   }
 
   function mountTodos(section, field) {
-    var list = node("div");
-    var items = todoList(store.entries[cur.key]);
-    items.forEach(function (todo) { list.appendChild(todoBlock(todo, !!field.status)); });
+    var list = node("div", "todo-list");
+    var actions = node("div", "todo-actions");
+    var add = button("add", "➕ Add to-do");
+    todoList(store.entries[cur.key]).forEach(function (todo) {
+      list.appendChild(todoBlock(todo, !!field.status));
+    });
     section.appendChild(list);
+    add.addEventListener("click", function () {
+      var todo = { id: uid(), text: "", done: false };
+      var block;
+      if (field.status) todo.status = "none";
+      ensure().todos.push(todo);
+      block = todoBlock(todo, !!field.status);
+      list.appendChild(block);
+      block.focusText();
+      touch();
+    });
+    actions.appendChild(add);
     if (field.carry) {
-      section.appendChild(button("carry", "Bring unfinished from yesterday")).addEventListener("click", function () {
-        var prev = store.entries[JournalCore.shift(cur.key, -1)];
-        var src = todoList(prev);
+      actions.appendChild(button("carry", "↪️ Bring unfinished from yesterday")).addEventListener("click", function () {
         var have = {};
         var added = [];
         todoList(store.entries[cur.key]).forEach(function (todo) {
           var text = String(todo.text || "").trim();
           if (text) have[text] = true;
         });
-        src.forEach(function (todo) {
+        todoList(store.entries[JournalCore.shift(cur.key, -1)]).forEach(function (todo) {
           var text = String(todo.text || "").trim();
           if (todo.done || !text || have[text]) return;
           have[text] = true;
           added.push({ id: uid(), text: text, done: false });
         });
-        if (!added.length) return;
+        if (!added.length) {
+          els.sync.textContent = "👍 Nothing unfinished yesterday";
+          return;
+        }
         added.forEach(function (todo) {
           ensure().todos.push(todo);
           list.appendChild(todoBlock(todo, false));
@@ -299,50 +333,46 @@
         touch();
       });
     }
-    section.appendChild(button("add", "Add to-do")).addEventListener("click", function () {
-      var todo = { id: uid(), text: "", done: false };
-      ensure().todos.push(todo);
-      list.appendChild(todoBlock(todo, !!field.status));
-      touch();
-    });
+    section.appendChild(actions);
   }
 
   function mountStrip(key) {
-    var section = card("Mood & energy", "strip");
-    var days = JournalCore.weekDays(key);
+    var section = card("📊 Mood & energy");
+    var strip = node("div", "strip");
+    var today = JournalCore.dayKey(new Date());
     var moods = [];
     var energies = [];
     function avg(list) {
-      var sum = 0;
-      var i;
-      for (i = 0; i < list.length; i++) sum += list[i];
-      return list.length ? (sum / list.length).toFixed(1) : "\u2014";
+      var sum = list.reduce(function (a, b) { return a + b; }, 0);
+      return list.length ? (sum / list.length).toFixed(1) : "–";
     }
-    days.forEach(function (dayKey) {
+    JournalCore.weekDays(key).forEach(function (dayKey) {
       var fields = fieldMap(store.entries[dayKey]);
-      var link = node("a");
+      var link = node("a", dayKey === today ? "today" : "");
+      var wd = new Date(Date.UTC(+dayKey.slice(0, 4), +dayKey.slice(5, 7) - 1, +dayKey.slice(8, 10))).getUTCDay();
       if (isScore(fields.mood)) moods.push(fields.mood);
       if (isScore(fields.energy)) energies.push(fields.energy);
       link.href = "#day/" + dayKey;
-      link.textContent = shortWd(dayKey) + " \u00b7 " + scoreText(fields.mood) + " \u00b7 " + scoreText(fields.energy);
-      section.appendChild(link);
+      link.appendChild(node("span", "", WEEKDAYS[wd]));
+      link.appendChild(node("span", "emo", isScore(fields.mood) ? MOOD[fields.mood - 1] : "·"));
+      link.appendChild(node("span", "", isScore(fields.energy) ? ENERGY[fields.energy - 1] : "·"));
+      strip.appendChild(link);
     });
-    section.appendChild(node("p", "", "Week avg " + avg(moods) + " mood · " + avg(energies) + " energy"));
+    section.appendChild(strip);
+    section.appendChild(node("p", "avg", "Week average · 😊 " + avg(moods) + " mood · ⚡ " + avg(energies) + " energy"));
     return section;
   }
 
-  function mountReview(key) {
-    var section = card("Last period", "review");
-    var items = todoList(store.entries[JournalCore.shift(key, -1)]);
-    var ul;
-    if (!items.length) {
-      section.appendChild(node("p", "", "No to-dos last period."));
-      return section;
-    }
+  function mountReview(key, title) {
+    var items = todoList(store.entries[JournalCore.shift(key, -1)]).filter(function (todo) {
+      return String(todo.text || "").trim();
+    });
+    var section, ul;
+    if (!items.length) return null;
+    section = card(title);
     ul = node("ul", "review");
     items.forEach(function (todo) {
-      var state = todo.done ? "done" : "open";
-      ul.appendChild(node("li", "", todo.text ? todo.text + " " + state : state));
+      ul.appendChild(node("li", todo.done ? "done" : "", (todo.done ? "✅ " : "⭕ ") + todo.text));
     });
     section.appendChild(ul);
     return section;
@@ -350,71 +380,87 @@
 
   function render() {
     var route = readRoute();
-    var schema, entry, fields;
+    var schema, fields, quote, block, review, shown = 0;
     if (!route) return;
     cur = route;
     schema = JournalSchemas[cur.kind];
-    entry = store.entries[cur.key];
-    fields = fieldMap(entry);
+    fields = fieldMap(store.entries[cur.key]);
+    document.body.dataset.kind = cur.kind;
+
     els.tabs.textContent = "";
     JournalSchemas.order.forEach(function (kind) {
-      var tab = button(kind === cur.kind ? "tab active" : "tab", JournalSchemas[kind].label);
+      var tab = button(kind === cur.kind ? "tab active" : "tab", JournalSchemas[kind].icon + " " + JournalSchemas[kind].label);
       tab.addEventListener("click", function () {
         location.hash = "#" + kind + "/" + JournalCore.todayKey(kind, new Date());
       });
       els.tabs.appendChild(tab);
     });
+    els.icon.textContent = schema.icon;
     els.period.textContent = JournalCore.label(cur.key) || "";
+    els.today.hidden = cur.key === JournalCore.todayKey(cur.kind, new Date());
     paintParent();
     paintCompletion();
+
     els.form.textContent = "";
-    if (cur.kind === "day") {
-      var quote = quoteText(cur.key);
-      if (quote) {
-        var block = node("section", "card quote");
-        block.appendChild(node("h3", "", "Quote of the day"));
-        block.appendChild(node("p", "", quote));
-        els.form.appendChild(block);
-      }
+    quote = cur.kind === "day" ? quoteText(cur.key) : "";
+    if (quote) {
+      block = card("💭 Quote of the day", "quote");
+      block.appendChild(node("p", "", quote));
+      els.form.appendChild(block);
     }
     if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key));
+
     schema.sections.forEach(function (section) {
       var box = card(section.title);
+      var meters = node("div", "meters");
+      var hasTodos = false;
+      var count = 0;
       section.fields.forEach(function (field) {
-        if (field.type === "todos") mountTodos(box, field);
-        else box.appendChild(fieldView(field, fields));
+        var value = fields[field.key];
+        if (field.type === "todos") {
+          mountTodos(box, field);
+          hasTodos = true;
+          return;
+        }
+        if (!isFilled(field, value)) return;
+        count += 1;
+        if (field.type === "scale") {
+          meters.appendChild(meter(field, value));
+          if (meters.parentNode !== box) box.insertBefore(meters, box.children[1] || null);
+        } else {
+          box.appendChild(fieldView(field, value));
+        }
       });
-      els.form.appendChild(box);
+      shown += count;
+      if (count || hasTodos) els.form.appendChild(box);
     });
-    if (schema.reviewPrevTodos) els.form.appendChild(mountReview(cur.key));
-  }
 
-  function quoteText(key) {
-    var quote = store.quotes && store.quotes[key];
-    if (!quote || typeof quote.text !== "string") return "";
-    return quote.text.trim();
-  }
-
-  function stamp() {
-    var now = new Date();
-    els.sync.textContent = "Synced " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+    if (schema.reviewPrevTodos) {
+      review = mountReview(cur.key, schema.reviewPrevTodos);
+      if (review) els.form.appendChild(review);
+    }
+    if (!shown && !quote) {
+      block = node("section", "card empty");
+      block.appendChild(node("span", "big", "🌱"));
+      block.appendChild(node("span", "", "Nothing written for this " + schema.label.toLowerCase() + " yet."));
+      els.form.insertBefore(block, els.form.firstChild);
+    }
+    if (document.fonts) document.fonts.ready.then(fitAll);
   }
 
   function mergeIn(remote) {
     var key = cur.key;
-    var before = key ? JSON.stringify({ entry: store.entries[key] || null, quote: quoteText(key) }) : "";
-    var after;
+    var snap = function () { return JSON.stringify({ e: store.entries[key] || null, q: quoteText(key) }); };
+    var before = snap();
     store = JournalCore.mergeStores(store, remote);
     persist();
-    if (key && store.entries) {
-      after = JSON.stringify({ entry: store.entries[key] || null, quote: quoteText(key) });
-      if (before !== after) render();
+    if (key) {
+      if (snap() !== before && !document.activeElement.matches("textarea")) render();
       else {
         paintCompletion();
         paintParent();
       }
     }
-    stamp();
   }
 
   function hasToken() {
@@ -426,58 +472,97 @@
     }
   }
 
+  function showConnect() {
+    els.connect.hidden = hasToken();
+  }
+
   function fail(err) {
-    els.sync.textContent = err && err.message ? err.message : String(err);
+    els.sync.textContent = "⚠️ " + (err && err.message ? err.message : String(err));
+    showConnect();
+  }
+
+  function scheduleSave() {
+    if (!hasToken()) {
+      els.sync.textContent = "💾 Saved on this device";
+      return;
+    }
+    els.sync.textContent = "✏️ Saving soon…";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(pushNow, SAVE_DELAY);
+  }
+
+  function pushNow() {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    if (saving) {
+      saveAgain = true;
+      return;
+    }
+    saving = true;
+    els.sync.textContent = "☁️ Saving…";
+    GhSync.save("journal", function () { return store; }, mergeIn, { quiet: true }).then(function () {
+      saving = false;
+      retried = false;
+      els.sync.textContent = "✅ Saved " + hhmm();
+      if (saveAgain) {
+        saveAgain = false;
+        pushNow();
+      }
+    }, function (err) {
+      saving = false;
+      fail(err);
+      if (!retried && /another device/.test(String(err && err.message))) {
+        retried = true;
+        saveTimer = setTimeout(pushNow, 3000);
+      }
+    });
   }
 
   function autoLoad() {
+    showConnect();
     if (!hasToken()) {
-      els.sync.textContent = "Not synced";
+      els.sync.textContent = "📴 Not synced";
       return;
     }
-    if (loading) return;
+    if (loading || saving || saveTimer) return;
     loading = true;
-    GhSync.load("journal", mergeIn).then(function (msg) {
+    GhSync.load("journal", mergeIn).then(function () {
       loading = false;
-      if (msg && els.sync.textContent.indexOf("Synced") !== 0) els.sync.textContent = msg;
+      els.sync.textContent = "☁️ Synced " + hhmm();
     }, function (err) {
       loading = false;
       fail(err);
     });
   }
 
-  els.prev.addEventListener("click", function () {
+  function go(delta) {
     if (!cur.key) return;
-    location.hash = "#" + cur.kind + "/" + JournalCore.shift(cur.key, -1);
-  });
-  els.next.addEventListener("click", function () {
-    if (!cur.key) return;
-    location.hash = "#" + cur.kind + "/" + JournalCore.shift(cur.key, 1);
-  });
+    location.hash = "#" + cur.kind + "/" + JournalCore.shift(cur.key, delta);
+  }
+
+  els.prev.addEventListener("click", function () { go(-1); });
+  els.next.addEventListener("click", function () { go(1); });
   els.today.addEventListener("click", function () {
-    if (!cur.kind) return;
-    location.hash = "#" + cur.kind + "/" + JournalCore.todayKey(cur.kind, new Date());
+    if (cur.kind) location.hash = "#" + cur.kind + "/" + JournalCore.todayKey(cur.kind, new Date());
   });
-  els.save.addEventListener("click", function () {
-    GhSync.save("journal", function () { return store; }, mergeIn).catch(fail);
+  els.connectBtn.addEventListener("click", function () {
+    GhSync.load("journal", mergeIn).then(function () {
+      showConnect();
+      els.sync.textContent = "☁️ Synced " + hhmm();
+    }, fail);
   });
-  els.load.addEventListener("click", function () {
-    GhSync.load("journal", mergeIn).catch(fail);
-  });
+  window.addEventListener("resize", fitAll);
   window.addEventListener("hashchange", function () {
-    if (!readRoute()) {
-      location.replace("#day/" + JournalCore.todayKey("day", new Date()));
-      return;
-    }
-    render();
+    if (!readRoute()) location.replace("#day/" + JournalCore.todayKey("day", new Date()));
+    else render();
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && saveTimer) pushNow();
+    if (document.visibilityState === "visible") autoLoad();
   });
 
   if (!readRoute()) location.replace("#day/" + JournalCore.todayKey("day", new Date()));
   else render();
-
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") autoLoad();
-  });
   setInterval(autoLoad, 60000);
   autoLoad();
 })();

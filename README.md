@@ -8,6 +8,6 @@ Entries and the quote of the day live in Dong-Xuyong/progress-sync, file journal
 
 The page auto-loads that file on open, on focus, and every 60 seconds.
 
-Save still asks twice before it writes.
+Journal fields are read-only on the page; Grok writes them. Only to-dos are editable, and to-do changes save to GitHub automatically a few seconds after you stop typing.
 
 CONTRACT.md is the writer spec for updating journal.json.

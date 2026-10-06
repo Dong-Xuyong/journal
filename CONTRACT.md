@@ -51,6 +51,7 @@ Every field key below goes inside `fields`. `todos` is a sibling of `fields`.
 ## Write rules
 
 - Set `updatedAt` to the current UTC ISO-8601 time on every entry you change. The website keeps the entry with the newer `updatedAt`.
+- The user edits only `todos` on the website, and it saves them back to this file automatically. Always read the latest file before writing so you keep the user's ticked, added, edited, or deleted to-dos.
 - Read the file first, modify it, then PUT with the `sha` from the GET so you never clobber a newer version. On 409, GET again and retry once.
 - Never delete an entry you did not intend to change. Preserve every other key and its fields.
 - Repo: `Dong-Xuyong/progress-sync`. Path: `journal.json`. API: `PUT https://api.github.com/repos/Dong-Xuyong/progress-sync/contents/journal.json` with `Authorization: Bearer <token>`, `message` `"Save journal progress"`, `content` as base64 of the full JSON, and `sha`.

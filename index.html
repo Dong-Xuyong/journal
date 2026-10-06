@@ -7,35 +7,44 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Journal" />
   <title>Journal</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="dong-ui/theme.css?v=3" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="dong-ui/theme.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=4" />
   <script src="dong-ui/theme.js"></script>
   <link rel="manifest" href="manifest.webmanifest" />
 </head>
 <body>
   <header>
-    <h1>Journal</h1>
-    <span id="sync-label"></span>
+    <h1>📓 Journal</h1>
+    <span id="sync-label" aria-live="polite"></span>
     <button type="button" data-dong-theme-toggle aria-label="Toggle color theme"></button>
   </header>
   <nav id="tabs" aria-label="Review period"></nav>
-  <div class="period-nav">
-    <button type="button" id="prev" aria-label="Previous">‹</button>
-    <h2 id="period-label"></h2>
-    <button type="button" id="today">Today</button>
-    <button type="button" id="next" aria-label="Next">›</button>
-  </div>
-  <p id="parent-line"></p>
-  <div id="completion"></div>
+  <section id="hero" class="hero">
+    <div class="hero-top">
+      <span id="hero-icon" class="hero-icon" aria-hidden="true"></span>
+      <div class="hero-text">
+        <h2 id="period-label"></h2>
+        <p id="parent-line"></p>
+      </div>
+    </div>
+    <div class="hero-foot">
+      <div id="completion"></div>
+      <div class="period-nav">
+        <button type="button" id="prev" aria-label="Previous">‹</button>
+        <button type="button" id="today">Today</button>
+        <button type="button" id="next" aria-label="Next">›</button>
+      </div>
+    </div>
+  </section>
   <main id="form"></main>
-  <footer>
-    <button type="button" id="btn-save">Save</button>
-    <button type="button" id="btn-load">Load</button>
+  <footer id="connect" hidden>
+    <button type="button" id="btn-connect">🔑 Connect GitHub to sync</button>
   </footer>
-  <script src="dong-ui/gh-sync.js?v=3"></script>
-  <script src="core.js?v=3"></script>
-  <script src="schemas.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="dong-ui/gh-sync.js?v=4"></script>
+  <script src="core.js?v=4"></script>
+  <script src="schemas.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
