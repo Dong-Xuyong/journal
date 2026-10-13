@@ -7,14 +7,25 @@ Write the user's journal into the private GitHub repo `Dong-Xuyong/progress-sync
 ```json
 {
   "version": 1,
+  "habitDefs": [
+    { "id": "thesis", "label": "Thesis", "emoji": "📝" },
+    { "id": "training", "label": "Training", "emoji": "💪" },
+    { "id": "food_logged", "label": "Food logged", "emoji": "🍽️" },
+    { "id": "weigh_in", "label": "Weigh in", "emoji": "⚖️" },
+    { "id": "speaking", "label": "Speaking", "emoji": "🗣️" },
+    { "id": "sunlight", "label": "Sunlight", "emoji": "☀️" },
+    { "id": "protein_breakfast", "label": "Protein breakfast", "emoji": "🥚" }
+  ],
   "quotes": {
     "2026-10-06": { "text": "Quote of the day.", "updatedAt": "<ISO-8601>" }
   },
   "entries": {
-    "<key>": {
+    "2026-10-06": {
       "updatedAt": "<ISO-8601>",
       "fields": {},
-      "todos": [ { "id": "t1", "text": "Call bank", "done": false } ]
+      "todos": [ { "id": "t1", "text": "Call bank", "done": false } ],
+      "habits": { "thesis": true, "training": false, "sunlight": null },
+      "habitStreaks": { "thesis": 4, "training": 0, "sunlight": 0 }
     }
   }
 }
@@ -38,6 +49,17 @@ Keys use the same names as the Obsidian notes.
 - Set `updatedAt` on the quote object. A newer stamp wins for that day only.
 - When you are only writing the quote, leave `entries` unchanged.
 
+## Habits
+
+`habitDefs` is a top-level array, a sibling of `entries` and `quotes`. Order is the display order on the Habits tab. Each item is `{ "id", "label", "emoji" }`. Ids stay stable. The current ids are `thesis`, `training`, `food_logged`, `weigh_in`, `speaking`, `sunlight`, and `protein_breakfast`.
+
+`habits` and `habitStreaks` belong on day entries only (`YYYY-MM-DD`). Omit them on week, month, quarter, and year entries. Omit `habits` entirely when that day has no habit log. Do not fill a missing day with `false`.
+
+- `habits[id]` is `true` (done), `false` (not done), or `null` (unknown). Unknown is not the same as not done. Show it as unknown. A missing id on a logged day is also unknown.
+- `habitStreaks[id]` is the integer run of consecutive `true` days for that id ending on that day, including that day. `false`, `null`, and a calendar day with no `habits` object all break the run and count as not done. Use `0` when that day is not `true`.
+- The website recomputes streaks from `habits`, so a stale `habitStreaks` still displays correctly. Write `habitStreaks` anyway for other readers.
+- If `habitDefs` is missing, the website falls back to the seven ids above. It does not write that fallback into the file.
+
 ## Fields
 
 Every field key below goes inside `fields`. `todos` is a sibling of `fields`.
@@ -54,5 +76,6 @@ Every field key below goes inside `fields`. `todos` is a sibling of `fields`.
 - The user edits only `todos` on the website, and it saves them back to this file automatically. Always read the latest file before writing so you keep the user's ticked, added, edited, or deleted to-dos.
 - Read the file first, modify it, then PUT with the `sha` from the GET so you never clobber a newer version. On 409, GET again and retry once.
 - Never delete an entry you did not intend to change. Preserve every other key and its fields.
+- Preserve top-level `habitDefs` and any other top-level keys you are not editing. Preserve `habits` and `habitStreaks` on day entries. The website keeps those when it saves to-dos, and a save that rebuilds the file without them will wipe the habit log.
 - Repo: `Dong-Xuyong/progress-sync`. Path: `journal.json`. API: `PUT https://api.github.com/repos/Dong-Xuyong/progress-sync/contents/journal.json` with `Authorization: Bearer <token>`, `message` `"Save journal progress"`, `content` as base64 of the full JSON, and `sha`.
 - Token: a fine-grained PAT with Contents read and write on `Dong-Xuyong/progress-sync` only. Do not put the token in the repo.

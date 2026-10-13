@@ -73,6 +73,14 @@
     var hash = location.hash.replace(/^#/, "");
     var cut = hash.indexOf("/");
     var key;
+    if (hash === "habits" || hash.indexOf("habits/") === 0) {
+      key = "all";
+      if (hash.indexOf("habits/") === 0) {
+        try { key = decodeURIComponent(hash.slice(7)); } catch (e) { key = "all"; }
+        if (!key) key = "all";
+      }
+      return { kind: "habits", key: key };
+    }
     if (cut < 1) return null;
     try {
       key = decodeURIComponent(hash.slice(cut + 1));
@@ -378,15 +386,7 @@
     return section;
   }
 
-  function render() {
-    var route = readRoute();
-    var schema, fields, quote, block, review, shown = 0;
-    if (!route) return;
-    cur = route;
-    schema = JournalSchemas[cur.kind];
-    fields = fieldMap(store.entries[cur.key]);
-    document.body.dataset.kind = cur.kind;
-
+  function paintTabs() {
     els.tabs.textContent = "";
     JournalSchemas.order.forEach(function (kind) {
       var tab = button(kind === cur.kind ? "tab active" : "tab", JournalSchemas[kind].icon + " " + JournalSchemas[kind].label);
@@ -395,6 +395,64 @@
       });
       els.tabs.appendChild(tab);
     });
+    var habitsTab = button(cur.kind === "habits" ? "tab active" : "tab", "🔥 Habits");
+    habitsTab.addEventListener("click", function () {
+      location.hash = "#habits";
+    });
+    els.tabs.appendChild(habitsTab);
+  }
+
+  function renderHabits() {
+    var now = new Date();
+    var today = JournalCore.dayKey(now);
+    var defs = JournalCore.habitDefsOf(store);
+    var summary = JournalCore.dayCompletion(store.entries[today], defs);
+    var onStreak = 0;
+    var i;
+    var ring;
+    var status;
+    document.body.dataset.kind = "habits";
+    els.prev.hidden = true;
+    els.next.hidden = true;
+    els.today.hidden = true;
+    els.icon.textContent = "🔥";
+    els.period.textContent = "Habits";
+    for (i = 0; i < defs.length; i++) {
+      if (JournalCore.currentStreak(store, defs[i].id, today) > 0) onStreak += 1;
+    }
+    els.parent.textContent = JournalCore.label(today) + (onStreak ? " · " + onStreak + (onStreak === 1 ? " habit on a streak" : " habits on a streak") : "");
+    els.completion.textContent = "";
+    ring = node("div", "ring");
+    ring.style.setProperty("--p", String(summary.rate == null ? 0 : Math.round(summary.rate * 100)));
+    els.completion.appendChild(ring);
+    status = summary.state === "none" ? "No log yet" : summary.state === "unknown" ? "Unknown today" : summary.done + "/" + summary.total + " today";
+    els.completion.appendChild(node("span", "", "🔥 " + status));
+    els.form.textContent = "";
+    JournalHabits.render(els.form, store, {
+      now: now,
+      today: today,
+      selected: cur.key,
+      onSelect: function (id) {
+        location.hash = id ? "#habits/" + encodeURIComponent(id) : "#habits";
+      }
+    });
+  }
+
+  function render() {
+    var route = readRoute();
+    var schema, fields, quote, block, review, shown = 0;
+    if (!route) return;
+    cur = route;
+    paintTabs();
+    if (cur.kind === "habits") {
+      renderHabits();
+      return;
+    }
+    schema = JournalSchemas[cur.kind];
+    fields = fieldMap(store.entries[cur.key]);
+    document.body.dataset.kind = cur.kind;
+    els.prev.hidden = false;
+    els.next.hidden = false;
     els.icon.textContent = schema.icon;
     els.period.textContent = JournalCore.label(cur.key) || "";
     els.today.hidden = cur.key === JournalCore.todayKey(cur.kind, new Date());
@@ -450,17 +508,24 @@
 
   function mergeIn(remote) {
     var key = cur.key;
-    var snap = function () { return JSON.stringify({ e: store.entries[key] || null, q: quoteText(key) }); };
+    var habitView = cur.kind === "habits";
+    var snap = function () {
+      return JSON.stringify(habitView
+        ? { d: store.habitDefs || null, e: store.entries }
+        : { e: store.entries[key] || null, q: quoteText(key) });
+    };
     var before = snap();
+    var typing;
     store = JournalCore.mergeStores(store, remote);
     persist();
-    if (key) {
-      if (snap() !== before && !document.activeElement.matches("textarea")) render();
-      else {
-        paintCompletion();
-        paintParent();
-      }
+    if (snap() === before) return;
+    typing = document.activeElement && document.activeElement.matches && document.activeElement.matches("textarea");
+    if (!habitView && typing) {
+      paintCompletion();
+      paintParent();
+      return;
     }
+    render();
   }
 
   function hasToken() {
