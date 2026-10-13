@@ -425,7 +425,7 @@
     ring = node("div", "ring");
     ring.style.setProperty("--p", String(summary.rate == null ? 0 : Math.round(summary.rate * 100)));
     els.completion.appendChild(ring);
-    status = summary.state === "none" ? "No log yet" : summary.state === "unknown" ? "Unknown today" : summary.done + "/" + summary.total + " today";
+    status = summary.state === "none" ? "No log yet" : summary.state === "unknown" ? "Unknown today" : summary.done + "/" + summary.total + " today" + (summary.unknown ? " · " + summary.unknown + " unknown" : "");
     els.completion.appendChild(node("span", "", "🔥 " + status));
     els.form.textContent = "";
     JournalHabits.render(els.form, store, {

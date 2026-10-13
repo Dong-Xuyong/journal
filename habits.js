@@ -182,7 +182,7 @@
       tile.appendChild(node("span", "habit-emoji", def.emoji));
       tile.appendChild(node("span", "habit-label", def.label));
       tile.appendChild(streak);
-      tile.appendChild(node("span", "habit-streak-lbl", current === 1 ? "day streak" : "days in a row"));
+      tile.appendChild(node("span", "habit-streak-lbl", current > 1 ? "days in a row" : "day streak"));
       tile.appendChild(node("span", "best", "Best " + best));
       tile.appendChild(node("span", "today-pill " + status, "Today · " + statusText(status)));
       tile.addEventListener("click", function () {

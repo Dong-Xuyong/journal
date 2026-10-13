@@ -343,7 +343,8 @@
   }
 
   function habitStatus(entry, id) {
-    if (!isRecord(entry) || !isRecord(entry.habits) || !Object.prototype.hasOwnProperty.call(entry.habits, id)) return "none";
+    if (!isRecord(entry) || !isRecord(entry.habits)) return "none";
+    if (!Object.prototype.hasOwnProperty.call(entry.habits, id)) return "unknown";
     var value = entry.habits[id];
     if (value === true) return "done";
     if (value === false) return "miss";
@@ -669,7 +670,9 @@
     assert.strictEqual(bestStreak(streakStore, "training", "2026-10-05"), 1);
     assert.strictEqual(habitStatus(streakStore.entries["2026-10-02"], "training"), "unknown");
     assert.strictEqual(habitStatus(streakStore.entries["2026-10-03"], "thesis"), "miss");
-    assert.strictEqual(habitStatus(streakStore.entries["2026-10-01"], "sunlight"), "none");
+    assert.strictEqual(habitStatus(streakStore.entries["2026-10-01"], "sunlight"), "unknown");
+    assert.strictEqual(habitStatus({ fields: {} }, "thesis"), "none");
+    assert.strictEqual(habitStatus(undefined, "thesis"), "none");
     var mixed = dayCompletion(streakStore.entries["2026-10-02"], streakDefs);
     assert.strictEqual(mixed.state, "logged");
     assert.strictEqual(mixed.done, 1);

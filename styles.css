@@ -592,7 +592,7 @@ button:focus-visible,
 
 .heat-scroll {
   overflow-x: auto;
-  padding-bottom: 6px;
+  padding: 2px 12px 6px 0;
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--tint) / 0.55) transparent;
 }
