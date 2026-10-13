@@ -406,7 +406,7 @@
     var now = new Date();
     var today = JournalCore.dayKey(now);
     var defs = JournalCore.habitDefsOf(store);
-    var summary = JournalCore.dayCompletion(store.entries[today], defs);
+    var play = JournalGamify.play(store, defs, today);
     var onStreak = 0;
     var i;
     var ring;
@@ -423,9 +423,9 @@
     els.parent.textContent = JournalCore.label(today) + (onStreak ? " · " + onStreak + (onStreak === 1 ? " habit on a streak" : " habits on a streak") : "");
     els.completion.textContent = "";
     ring = node("div", "ring");
-    ring.style.setProperty("--p", String(summary.rate == null ? 0 : Math.round(summary.rate * 100)));
+    ring.style.setProperty("--p", String(Math.round(Math.min(1, play.done / play.total) * 100)));
     els.completion.appendChild(ring);
-    status = summary.state === "none" ? "No log yet" : summary.state === "unknown" ? "Unknown today" : summary.done + "/" + summary.total + " today" + (summary.unknown ? " · " + summary.unknown + " unknown" : "");
+    status = !play.logged ? "No log yet" : play.done + "/" + play.total + (play.win ? " · win day" : "");
     els.completion.appendChild(node("span", "", "🔥 " + status));
     els.form.textContent = "";
     JournalHabits.render(els.form, store, {

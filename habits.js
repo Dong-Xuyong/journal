@@ -21,6 +21,67 @@
     return el;
   }
 
+  var tipOpen = null;
+
+  function closeTip() {
+    if (!tipOpen) return;
+    tipOpen.tip.hidden = true;
+    tipOpen.btn.setAttribute("aria-expanded", "false");
+    tipOpen = null;
+  }
+
+  function infoButton(citeKey) {
+    var cite = JournalGamify.cite(citeKey);
+    var wrap = node("span", "info-wrap");
+    var btn = button("info-btn", "\u24D8");
+    var tip = node("span", "info-tip");
+    btn.setAttribute("aria-label", cite.title + ". " + cite.concept);
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("data-cite", citeKey);
+    tip.hidden = true;
+    tip.setAttribute("role", "tooltip");
+    tip.appendChild(node("b", "", cite.title));
+    tip.appendChild(node("span", "info-by", cite.by));
+    tip.appendChild(node("span", "info-concept", cite.concept));
+    if (cite.text) tip.appendChild(node("p", "", cite.text));
+    btn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      var opening = tip.hidden;
+      closeTip();
+      if (!opening) return;
+      if (btn.getBoundingClientRect().left > window.innerWidth * 0.55) tip.classList.add("align-end");
+      else tip.classList.remove("align-end");
+      tip.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+      tipOpen = { tip: tip, btn: btn };
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(tip);
+    return wrap;
+  }
+
+  function cardHead(title, citeKey) {
+    var head = node("div", "card-head");
+    head.appendChild(node("h3", "", title));
+    if (citeKey) head.appendChild(infoButton(citeKey));
+    return head;
+  }
+
+  function mech(label, citeKey) {
+    var item = node("span", "mech");
+    item.appendChild(node("span", "", label));
+    item.appendChild(infoButton(citeKey));
+    return item;
+  }
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest && event.target.closest(".info-wrap")) return;
+    closeTip();
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeTip();
+  });
+
   function svgEl(name) {
     return document.createElementNS(SVG, name);
   }
@@ -161,10 +222,89 @@
     };
   }
 
+  function renderToday(store, defs, today) {
+    var board = JournalGamify.play(store, defs, today);
+    var cycle = board.cycle;
+    var section = node("section", "card play-card");
+    var row = node("div", "play-row");
+    var ring = node("div", "day-ring" + (board.win ? " win" : ""));
+    var figure = node("span", "day-ring-num");
+    var copy = node("div", "play-copy");
+    var bar = node("span", "rate-bar");
+    var fill = node("i");
+    var wins = cycle.wins === 1 ? "1 win" : cycle.wins + " wins";
+    section.appendChild(cardHead("\uD83C\uDFAF Today", "twentyOne"));
+    ring.style.setProperty("--p", String(Math.round(Math.min(1, board.done / board.total) * 100)));
+    ring.setAttribute("data-done", String(board.done));
+    ring.setAttribute("data-win", board.win ? "1" : "0");
+    figure.appendChild(node("strong", "", String(board.done)));
+    figure.appendChild(node("span", "", "/" + board.total));
+    ring.appendChild(figure);
+    copy.appendChild(node("p", "play-status" + (board.win ? " win" : ""), board.logged ? (board.win ? "Win day" : "Not a win yet") : "No log yet"));
+    copy.appendChild(node("p", "play-streak", board.winStreak ? board.winStreak + (board.winStreak === 1 ? " win day in a row" : " win days in a row") : "No win streak yet"));
+    if (cycle.phase === "test") {
+      copy.appendChild(node("p", "cycle-label", "Test automaticity \u00b7 day " + cycle.testDay + " of 7"));
+      copy.appendChild(node("p", "habit-note cycle-wins", wins + " in the 21 days"));
+    } else {
+      copy.appendChild(node("p", "cycle-label", "Day " + cycle.day + " of 21"));
+      copy.appendChild(node("p", "habit-note cycle-wins", wins + " so far"));
+    }
+    fill.style.setProperty("--v", Math.round(cycle.progress * 100) + "%");
+    bar.appendChild(fill);
+    copy.appendChild(bar);
+    copy.setAttribute("data-cycle-day", String(cycle.day));
+    copy.setAttribute("data-cycle-phase", cycle.phase);
+    copy.setAttribute("data-win-streak", String(board.winStreak));
+    row.appendChild(ring);
+    row.appendChild(copy);
+    section.appendChild(row);
+    section.appendChild(node("p", "habit-note", "A win is " + JournalGamify.WIN_AT + " or more done today. Missed habits are not made up tomorrow."));
+    return section;
+  }
+
+  function renderXp(store, defs, today) {
+    var board = JournalGamify.play(store, defs, today);
+    var xp = board.xp;
+    var todayXp = xp.today;
+    var section = node("section", "card");
+    var level = node("div", "level-row");
+    var bar = node("span", "rate-bar");
+    var fill = node("i");
+    var surprise = node("div", "surprise-row");
+    var bits;
+    section.setAttribute("data-level", String(xp.level));
+    section.setAttribute("data-xp", String(xp.xp));
+    section.appendChild(cardHead("\u26A1 Effort", "effort"));
+    level.appendChild(node("b", "", "Level " + xp.level));
+    level.appendChild(node("span", "", xp.xp + " XP"));
+    fill.style.setProperty("--v", Math.round((xp.into / xp.need) * 100) + "%");
+    bar.appendChild(fill);
+    section.appendChild(level);
+    section.appendChild(bar);
+    section.appendChild(node("p", "habit-note", xp.into + " / " + xp.need + " XP to the next level \u00b7 " + JournalGamify.XP_HABIT + " XP a habit, " + JournalGamify.XP_WIN + " XP on a win day"));
+    if (board.logged && todayXp.done > 0) {
+      bits = ["+" + todayXp.habit + " habits"];
+      if (todayXp.win) bits.push("+" + todayXp.win + " win");
+      if (todayXp.surprise) bits.push("+" + todayXp.surprise + " surprise");
+      section.appendChild(node("p", "xp-today", "Today \u00b7 " + bits.join(" \u00b7 ")));
+    }
+    surprise.appendChild(node("span", "", "Surprise bonus"));
+    surprise.appendChild(infoButton("intermittent"));
+    surprise.setAttribute("data-surprise", todayXp.surprise ? "1" : "0");
+    if (todayXp.surprise) surprise.appendChild(node("span", "surprise-badge", "\uD83C\uDF81 +" + JournalGamify.XP_SURPRISE + " XP"));
+    section.appendChild(surprise);
+    return section;
+  }
+
   function renderCards(store, defs, today, selected, onSelect) {
     var section = node("section", "card");
     var grid = node("div", "habit-grid");
-    section.appendChild(node("h3", "", "✨ Streaks"));
+    var tools = node("div", "mech-line");
+    section.appendChild(cardHead("\u2728 Streaks"));
+    tools.appendChild(mech("Identity", "identity"));
+    tools.appendChild(mech("Milestones", "milestones"));
+    tools.appendChild(mech("Difficulty", "moderate"));
+    section.appendChild(tools);
     if (!store.habitDefs) {
       section.appendChild(node("p", "habit-note", "Showing the default habits until journal.json includes habitDefs."));
     }
@@ -172,22 +312,48 @@
       var status = JournalCore.habitStatus(store.entries[today], def.id);
       var current = JournalCore.currentStreak(store, def.id, today);
       var best = JournalCore.bestStreak(store, def.id, today);
-      var tile = button("habit-tile" + (selected === def.id ? " on" : ""));
-      var streak = node("span", "habit-streak", String(current));
+      var linchpin = JournalGamify.isLinchpin(def.id);
+      var tile = node("article", "habit-tile" + (selected === def.id ? " on" : "") + (linchpin ? " linchpin" : ""));
+      var open = button("habit-open");
+      var badges = node("div", "badges");
+      var hint = JournalGamify.nudge(store, def.id, today);
+      var ident = node("p", "identity");
       tile.setAttribute("data-habit", def.id);
       tile.setAttribute("data-streak", String(current));
       tile.setAttribute("data-best", String(best));
       tile.setAttribute("data-status", status);
-      tile.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
-      tile.appendChild(node("span", "habit-emoji", def.emoji));
-      tile.appendChild(node("span", "habit-label", def.label));
-      tile.appendChild(streak);
-      tile.appendChild(node("span", "habit-streak-lbl", current > 1 ? "days in a row" : "day streak"));
-      tile.appendChild(node("span", "best", "Best " + best));
-      tile.appendChild(node("span", "today-pill " + status, "Today · " + statusText(status)));
-      tile.addEventListener("click", function () {
+      tile.setAttribute("data-linchpin", linchpin ? "1" : "0");
+      open.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
+      open.appendChild(node("span", "habit-emoji", def.emoji));
+      open.appendChild(node("span", "habit-label", def.label));
+      open.appendChild(node("span", "habit-streak", String(current)));
+      open.appendChild(node("span", "habit-streak-lbl", current > 1 ? "days in a row" : "day streak"));
+      open.appendChild(node("span", "best", "Best " + best));
+      open.appendChild(node("span", "today-pill " + status, "Today \u00b7 " + statusText(status)));
+      open.addEventListener("click", function () {
         onSelect(selected === def.id ? "" : def.id);
       });
+      ident.appendChild(node("span", "", JournalGamify.identityOf(def.id)));
+      tile.appendChild(open);
+      tile.appendChild(ident);
+      if (linchpin) {
+        var mark = node("p", "linchpin-mark");
+        mark.appendChild(node("span", "", "Linchpin"));
+        mark.appendChild(infoButton("linchpin"));
+        tile.appendChild(mark);
+      }
+      JournalGamify.milestoneStates(best).forEach(function (item) {
+        var badge = node("span", "badge" + (item.unlocked ? " on" : ""), String(item.days));
+        badge.setAttribute("data-days", String(item.days));
+        badge.setAttribute("data-unlocked", item.unlocked ? "1" : "0");
+        badges.appendChild(badge);
+      });
+      tile.appendChild(badges);
+      if (hint) {
+        var line = node("p", "nudge " + hint.kind);
+        line.appendChild(node("span", "", hint.text));
+        tile.appendChild(line);
+      }
       grid.appendChild(tile);
     });
     section.appendChild(grid);
@@ -515,6 +681,8 @@
     function onSelect(id) {
       if (opts.onSelect) opts.onSelect(id || "");
     }
+    root.appendChild(renderToday(safeStore, defs, today));
+    root.appendChild(renderXp(safeStore, defs, today));
     root.appendChild(renderCards(safeStore, defs, today, selected, onSelect));
     root.appendChild(renderHeat(safeStore, defs, today, now, selected, onSelect));
     root.appendChild(renderTrend("week", safeStore, defs, today, now, selected, onSelect));
