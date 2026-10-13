@@ -64,6 +64,60 @@
     return el;
   }
 
+  var tipOpen = null;
+
+  function closeTip() {
+    if (!tipOpen) return;
+    tipOpen.tip.hidden = true;
+    tipOpen.btn.setAttribute("aria-expanded", "false");
+    tipOpen = null;
+  }
+
+  function infoButton(citeKey) {
+    var cite = JournalGamify.cite(citeKey);
+    var wrap = node("span", "info-wrap");
+    var btn = button("info-btn", "\u24D8");
+    var tip = node("span", "info-tip");
+    btn.setAttribute("aria-label", cite.title + ". " + cite.concept);
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("data-cite", citeKey);
+    tip.hidden = true;
+    tip.setAttribute("role", "tooltip");
+    tip.appendChild(node("b", "", cite.title));
+    tip.appendChild(node("span", "info-by", cite.by));
+    tip.appendChild(node("span", "info-concept", cite.concept));
+    if (cite.text) tip.appendChild(node("p", "", cite.text));
+    btn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      var opening = tip.hidden;
+      closeTip();
+      if (!opening) return;
+      if (btn.getBoundingClientRect().left > window.innerWidth * 0.55) tip.classList.add("align-end");
+      else tip.classList.remove("align-end");
+      tip.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+      tipOpen = { tip: tip, btn: btn };
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(tip);
+    return wrap;
+  }
+
+  function cardHead(title, citeKey) {
+    var head = node("div", "card-head");
+    head.appendChild(node("h3", "", title));
+    if (citeKey) head.appendChild(infoButton(citeKey));
+    return head;
+  }
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest && event.target.closest(".info-wrap")) return;
+    closeTip();
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeTip();
+  });
+
   function hhmm() {
     var now = new Date();
     return String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
@@ -135,6 +189,7 @@
     ensure().updatedAt = new Date().toISOString();
     persist();
     paintCompletion();
+    refreshJournalPlay();
     scheduleSave();
   }
 
@@ -344,8 +399,199 @@
     section.appendChild(actions);
   }
 
-  function mountStrip(key) {
-    var section = card("📊 Mood & energy");
+  function journalView() {
+    return { kind: cur.kind, key: cur.key, today: JournalCore.dayKey(new Date()) };
+  }
+
+  function avgText(n) {
+    return n == null ? "\u2013" : (Math.round(n * 10) / 10).toFixed(1);
+  }
+
+  function badge(text, on, extra) {
+    var el = node("span", "badge" + (on ? " on" : ""), text);
+    if (extra) {
+      Object.keys(extra).forEach(function (key) { el.setAttribute(key, extra[key]); });
+    }
+    return el;
+  }
+
+  function svgEl(name) {
+    return document.createElementNS("http://www.w3.org/2000/svg", name);
+  }
+
+  function sparkLine(points, prop, className) {
+    var group = svgEl("g");
+    group.setAttribute("class", className);
+    var seg = [];
+    function flush() {
+      if (!seg.length) return;
+      if (seg.length === 1) {
+        var dot = svgEl("circle");
+        dot.setAttribute("cx", seg[0][0]);
+        dot.setAttribute("cy", seg[0][1]);
+        dot.setAttribute("r", "1.8");
+        group.appendChild(dot);
+      } else {
+        var line = svgEl("polyline");
+        line.setAttribute("points", seg.map(function (pair) { return pair[0] + "," + pair[1]; }).join(" "));
+        group.appendChild(line);
+      }
+      seg = [];
+    }
+    points.forEach(function (point, index) {
+      var value = point[prop];
+      if (value == null) {
+        flush();
+        return;
+      }
+      var x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+      var y = 4 + ((5 - value) / 4) * 28;
+      seg.push([x.toFixed(2), y.toFixed(2)]);
+    });
+    flush();
+    return group;
+  }
+
+  function spark(span) {
+    var svg = svgEl("svg");
+    svg.setAttribute("viewBox", "0 0 100 36");
+    svg.setAttribute("class", "spark");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Mood and energy");
+    var base = svgEl("line");
+    base.setAttribute("x1", "0");
+    base.setAttribute("x2", "100");
+    base.setAttribute("y1", "32");
+    base.setAttribute("y2", "32");
+    base.setAttribute("class", "spark-base");
+    svg.appendChild(base);
+    svg.appendChild(sparkLine(span.points, "mood", "spark-mood"));
+    svg.appendChild(sparkLine(span.points, "energy", "spark-energy"));
+    return svg;
+  }
+
+  function sparkLegend() {
+    var row = node("div", "spark-legend");
+    row.appendChild(node("span", "spark-key mood", "Mood"));
+    row.appendChild(node("span", "spark-key energy", "Energy"));
+    return row;
+  }
+
+  function feelingStat(label, span) {
+    var row = node("div", "spark-block");
+    row.appendChild(node("span", "spark-label", label));
+    row.appendChild(spark(span));
+    row.appendChild(node("p", "spark-stat", "\uD83D\uDE42 " + avgText(span.moodAvg) + " mood \u00b7 \u26A1 " + avgText(span.energyAvg) + " energy \u00b7 " + span.logged + " logged"));
+    return row;
+  }
+
+  function mountFeelings(board) {
+    var section = node("section", "card journal-feelings");
+    section.setAttribute("data-feelings", board.feelings.badge ? "1" : "0");
+    section.appendChild(cardHead("\uD83D\uDCCA Mood & energy", "feelings"));
+    section.appendChild(badge("Logged feelings", board.feelings.badge, { "data-logged-feelings": board.feelings.badge ? "1" : "0" }));
+    section.appendChild(sparkLegend());
+    section.appendChild(feelingStat("7 days", board.feelings.week));
+    section.appendChild(feelingStat("30 days", board.feelings.month));
+    return section;
+  }
+
+  function ratioBadge(label, ratio) {
+    var on = ratio.expected > 0 && ratio.done >= ratio.expected;
+    return badge(label + " " + ratio.done + "/" + ratio.expected, on);
+  }
+
+  function mountJournalCard(board) {
+    var section = node("section", "card journal-play");
+    var streak = board.streak;
+    var level = board.xp.level;
+    var period = board.xp.period;
+    var bits = [];
+    var bar = node("span", "rate-bar");
+    var fill = node("i");
+    var surprise = node("div", "surprise-row");
+    var balance = node("div", "pill-row");
+    var reviews = node("div", "pill-row");
+    section.setAttribute("data-journal-streak", String(streak.current));
+    section.setAttribute("data-journal-best", String(streak.best));
+    section.setAttribute("data-journal-level", String(level.level));
+    section.setAttribute("data-journal-xp", String(level.xp));
+    section.setAttribute("data-gratitude-days", String(board.gratitude.streak));
+    section.setAttribute("data-gratitude-items", String(board.gratitude.items));
+    section.setAttribute("data-balanced", board.balance.balanced ? "1" : "0");
+    section.setAttribute("data-balanced-count", String(board.balance.count));
+    section.appendChild(cardHead("\uD83D\uDCD3 Journal streak", "journalStreak"));
+    section.appendChild(node("p", "play-streak", streak.current ? streak.current + (streak.current === 1 ? " day in a row" : " days in a row") : "No streak yet"));
+    section.appendChild(node("p", "habit-note", "Best " + streak.best));
+    var badges = node("div", "badges");
+    streak.badges.forEach(function (item) {
+      badges.appendChild(badge(String(item.days), item.unlocked, { "data-days": String(item.days), "data-unlocked": item.unlocked ? "1" : "0" }));
+    });
+    section.appendChild(badges);
+    var effort = cardHead("\u26A1 Effort", "effort");
+    effort.classList.add("subhead");
+    section.appendChild(effort);
+    var levelRow = node("div", "level-row");
+    levelRow.appendChild(node("b", "", "Level " + level.level));
+    levelRow.appendChild(node("span", "", level.xp + " XP"));
+    section.appendChild(levelRow);
+    fill.style.setProperty("--v", Math.round((level.into / level.need) * 100) + "%");
+    bar.appendChild(fill);
+    section.appendChild(bar);
+    section.appendChild(node("p", "habit-note", level.into + " / " + level.need + " XP to the next level \u00b7 " + JournalGamify.XP_MORNING + " XP for morning or evening. A week is " + JournalGamify.XP_WEEK + ", a month " + JournalGamify.XP_MONTH + ", a quarter " + JournalGamify.XP_QUARTER + "."));
+    if (period.morning) bits.push("+" + period.morning + " morning");
+    if (period.evening) bits.push("+" + period.evening + " evening");
+    if (period.review) bits.push("+" + period.review + " review");
+    if (period.surprise) bits.push("+" + period.surprise + " surprise");
+    if (bits.length) section.appendChild(node("p", "xp-today", "This entry \u00b7 " + bits.join(" \u00b7 ")));
+    surprise.appendChild(node("span", "", "Surprise bonus"));
+    surprise.appendChild(infoButton("intermittent"));
+    surprise.setAttribute("data-surprise", period.surprise ? "1" : "0");
+    if (period.surprise) surprise.appendChild(node("span", "surprise-badge", "\uD83C\uDF81 +" + JournalGamify.XP_JOURNAL_SURPRISE + " XP"));
+    section.appendChild(surprise);
+    var thanks = cardHead("\uD83D\uDE4F Gratitude", "gratitude");
+    thanks.classList.add("subhead");
+    section.appendChild(thanks);
+    section.appendChild(node("p", "play-streak", (board.gratitude.streak ? board.gratitude.streak + (board.gratitude.streak === 1 ? " day" : " days") : "No gratitude streak") + " \u00b7 " + board.gratitude.items + (board.gratitude.items === 1 ? " item" : " items")));
+    if (cur.kind !== "day") section.appendChild(node("p", "habit-note", board.gratitude.period + " in this " + cur.kind));
+    var act = cardHead("\u2696\uFE0F Reflect and act", "balance");
+    act.classList.add("subhead");
+    section.appendChild(act);
+    if (cur.kind === "day") {
+      balance.appendChild(badge("Reflection", board.balance.reflection));
+      balance.appendChild(badge("Action", board.balance.action));
+      balance.appendChild(badge("Balanced day", board.balance.balanced, { "data-balanced-badge": board.balance.balanced ? "1" : "0" }));
+    } else {
+      balance.appendChild(badge(board.balance.count + (board.balance.count === 1 ? " balanced day" : " balanced days"), board.balance.count > 0, { "data-balanced-badge": board.balance.count > 0 ? "1" : "0" }));
+    }
+    section.appendChild(balance);
+    var audit = cardHead("\uD83D\uDD0D Reviews", "reviews");
+    audit.classList.add("subhead");
+    section.appendChild(audit);
+    reviews.appendChild(ratioBadge("Week", board.reviews.week));
+    reviews.appendChild(ratioBadge("Weeks", board.reviews.weeks));
+    reviews.appendChild(ratioBadge("Month", board.reviews.month));
+    reviews.appendChild(ratioBadge("Quarter", board.reviews.quarter));
+    reviews.setAttribute("data-review-weeks", board.reviews.weeks.done + "/" + board.reviews.weeks.expected);
+    section.appendChild(reviews);
+    return section;
+  }
+
+  function refreshJournalPlay() {
+    var board, play, feel, strip;
+    if (!cur || (cur.kind !== "day" && cur.kind !== "week" && cur.kind !== "month")) return;
+    if (!els.form.querySelector(".journal-play")) return;
+    board = JournalGamify.journalBoard(store, journalView());
+    play = els.form.querySelector(".journal-play");
+    if (play) play.replaceWith(mountJournalCard(board));
+    feel = els.form.querySelector(".journal-feelings");
+    if (feel) feel.replaceWith(mountFeelings(board));
+    strip = els.form.querySelector(".mood-strip");
+    if (strip) strip.replaceWith(mountStrip(cur.key, board));
+  }
+
+  function mountStrip(key, board) {
+    var section = node("section", "card mood-strip");
     var strip = node("div", "strip");
     var today = JournalCore.dayKey(new Date());
     var moods = [];
@@ -366,8 +612,16 @@
       link.appendChild(node("span", "", isScore(fields.energy) ? ENERGY[fields.energy - 1] : "·"));
       strip.appendChild(link);
     });
+    section.appendChild(cardHead("\uD83D\uDCCA Mood & energy", "feelings"));
     section.appendChild(strip);
-    section.appendChild(node("p", "avg", "Week average · 😊 " + avg(moods) + " mood · ⚡ " + avg(energies) + " energy"));
+    section.appendChild(node("p", "avg", "Week average \u00b7 \uD83D\uDE0A " + avg(moods) + " mood \u00b7 \u26A1 " + avg(energies) + " energy"));
+    if (board) {
+      section.appendChild(badge("Logged feelings", board.feelings.badge, { "data-logged-feelings": board.feelings.badge ? "1" : "0" }));
+      section.appendChild(sparkLegend());
+      section.appendChild(feelingStat("7 days", board.feelings.week));
+      section.appendChild(feelingStat("30 days", board.feelings.month));
+      section.setAttribute("data-feelings", board.feelings.badge ? "1" : "0");
+    }
     return section;
   }
 
@@ -466,7 +720,13 @@
       block.appendChild(node("p", "", quote));
       els.form.appendChild(block);
     }
-    if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key));
+    var playBoard = null;
+    if (cur.kind === "day" || cur.kind === "week" || cur.kind === "month") {
+      playBoard = JournalGamify.journalBoard(store, journalView());
+      els.form.appendChild(mountJournalCard(playBoard));
+    }
+    if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key, playBoard));
+    else if (playBoard) els.form.appendChild(mountFeelings(playBoard));
 
     schema.sections.forEach(function (section) {
       var box = card(section.title);
@@ -501,7 +761,10 @@
       block = node("section", "card empty");
       block.appendChild(node("span", "big", "🌱"));
       block.appendChild(node("span", "", "Nothing written for this " + schema.label.toLowerCase() + " yet."));
-      els.form.insertBefore(block, els.form.firstChild);
+      var playCard = els.form.querySelector(".journal-play");
+      if (playCard && playCard.nextSibling) els.form.insertBefore(block, playCard.nextSibling);
+      else if (playCard) els.form.appendChild(block);
+      else els.form.insertBefore(block, els.form.firstChild);
     }
     if (document.fonts) document.fonts.ready.then(fitAll);
   }

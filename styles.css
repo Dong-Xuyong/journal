@@ -1023,6 +1023,56 @@ html.dark .nudge.ease { color: hsl(32 90% 68%); }
   .habit-grid { grid-template-columns: 1fr; }
 }
 
+.journal-play .habit-note { margin: 2px 0 8px; }
+.journal-play .play-streak { margin: 0; }
+.journal-play .badges { margin: 6px 0 2px; }
+.journal-play .subhead { margin-top: 14px; }
+.subhead h3 { font-size: 0.95rem; }
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.spark-legend {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.spark-key.mood { color: hsl(var(--tint)); }
+.spark-key.energy { color: hsl(var(--tint2)); }
+
+.spark-block { margin-top: 8px; }
+.spark-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.spark {
+  width: 100%;
+  height: 52px;
+  display: block;
+}
+.spark-base { stroke: var(--line); stroke-width: 0.7; }
+.spark-mood,
+.spark-energy { fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.spark-mood { stroke: hsl(var(--tint)); }
+.spark-energy { stroke: hsl(var(--tint2)); }
+.spark-mood circle { fill: hsl(var(--tint)); stroke: none; }
+.spark-energy circle { fill: hsl(var(--tint2)); stroke: none; }
+.spark-stat {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.journal-feelings > .badge,
+.mood-strip > .badge { margin-top: 2px; }
+
 @media (prefers-reduced-motion: reduce) {
   .trend-svg { animation: none; }
 }
