@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  // Every wiki citation used by the Habits view lives here.
+  // Every wiki citation used by the journal lives here.
   var WIKI = {
     videos: {
       habits: {
@@ -26,6 +26,10 @@
       },
       contiTools: {
         title: "Tools to Bolster Your Mental Health & Confidence | Dr. Paul Conti",
+        by: "Huberman"
+      },
+      balcetis: {
+        title: "Essentials: Tools for Setting & Achieving Goals | Dr. Emily Balcetis",
         by: "Huberman"
       }
     },
@@ -88,6 +92,21 @@
       balance: {
         video: "contiTools",
         concept: "doing-vs-thinking-balance",
+        text: ""
+      },
+      failure: {
+        video: "goals",
+        concept: "visualize-failure-goal-pursuit",
+        text: "Nearly doubles goal attainment."
+      },
+      obstacle: {
+        video: "balcetis",
+        concept: "obstacle-planning-goal-pursuit",
+        text: ""
+      },
+      habitCycle: {
+        video: "habits",
+        concept: "twenty-one-day-habit-system",
         text: ""
       }
     }
@@ -683,6 +702,7 @@
     assert.deepStrictEqual(titles, [
       "Controlling Your Dopamine For Motivation, Focus & Satisfaction",
       "Dr. Paul Conti: How to Understand & Assess Your Mental Health | Huberman Lab Guest Series",
+      "Essentials: Tools for Setting & Achieving Goals | Dr. Emily Balcetis",
       "How to Better Regulate Your Emotions | Dr. Marc Brackett",
       "How to Set & Achieve Goals | Huberman Lab Essentials",
       "The Science of Making & Breaking Habits",
@@ -826,6 +846,12 @@
     assert.strictEqual(cite("balance").concept, "doing-vs-thinking-balance");
     assert.strictEqual(cite("balance").text, "");
     assert.strictEqual(cite("balance").title, WIKI.videos.contiTools.title);
+    assert.strictEqual(cite("failure").concept, "visualize-failure-goal-pursuit");
+    assert.strictEqual(cite("failure").text, "Nearly doubles goal attainment.");
+    assert.strictEqual(cite("obstacle").concept, "obstacle-planning-goal-pursuit");
+    assert.strictEqual(cite("obstacle").title, WIKI.videos.balcetis.title);
+    assert.strictEqual(cite("habitCycle").concept, "twenty-one-day-habit-system");
+    assert.strictEqual(cite("moderate").concept, "moderate-difficulty-goals");
 
     var log = { entries: {} };
     log.entries["2026-10-10"] = {

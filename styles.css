@@ -1073,6 +1073,79 @@ html.dark .nudge.ease { color: hsl(32 90% 68%); }
 .journal-feelings > .badge,
 .mood-strip > .badge { margin-top: 2px; }
 
+.lbl-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.lbl-row .lbl { margin: 0; }
+
+.prompt {
+  margin: 0;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.priorities,
+.wins {
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+.priorities li,
+.wins li { padding: 2px 0; }
+
+.intention { font-size: 1.15rem; font-weight: 700; }
+
+.feeling-meter { grid-column: 1 / -1; }
+.feeling-meter b { font-size: 1.15rem; }
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.goal-card {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: hsl(var(--muted) / 0.45);
+}
+
+.goal-card h4 { margin: 0 0 4px; font-size: 0.92rem; }
+.goal-card .val,
+.goal-card .prompt { font-size: 0.82rem; }
+.goal-card .val { margin-top: 4px; }
+.goal-card b { font-size: 1.05rem; }
+
+.habit-jump {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: hsl(var(--tint) / 0.12);
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.habit-open-label { color: hsl(var(--tint)); }
+
+@media (min-width: 560px) {
+  .practice .meters { grid-template-columns: 1fr 1fr 1.15fr; }
+  .feeling-meter { grid-column: auto; }
+  .goal-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .trend-svg { animation: none; }
 }

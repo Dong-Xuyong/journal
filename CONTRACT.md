@@ -70,6 +70,31 @@ Every field key below goes inside `fields`. `todos` is a sibling of `fields`.
 - Quarter: `q1`, `q2`, `q3`, `q4`, `q5`, `q6`, `mainQuest`, `commit90`, `goingTo`, `wins`, `improve`, `yearProgress`. `q1` is the most important 3-month goal. `q2` is the needle-mover. `q3` is a proud accomplishment. `q4` is what makes everything easier. `q5` is postponed. `q6` is first two hours focus.
 - Year: `vision`, `principle`. Year goals are `todos`, and each todo also has `status`: `"none"`, `"progress"`, `"done"`, or `"paused"`. Year review fields: `wins`, `finished`, `differently`, `lessons`.
 
+## Optional practice fields
+
+Omit any of these when you have nothing to write. The website still shows the prompt. Do not invent empty strings just to fill the template.
+
+Day fields live on the day entry, inside `fields`:
+
+- `priorities`: array of up to 3 strings, the day's top items. If you omit it, the website uses up to 3 to-dos marked `mit: true`, or the first to-dos with text.
+- `failureCost`: string. What happens if priority 1 does not get done today.
+- `ifThen`: string. The main obstacle and the if-then plan.
+- `wins`: array of strings. Name the effort, not only the result. This is not the week `wins` paragraph.
+- `lesson`: string. This is not the week `lesson`.
+- `feeling`: string. One precise emotion word, shown next to mood and energy.
+- `chosenVsMomentum`: string. What was chosen today versus done on autopilot.
+- `tomorrow`: array of up to 3 strings.
+
+A day to-do may include `"mit": true` when it is one of the most important tasks. That flag is optional. The website still treats `done` as the action for a balanced day.
+
+Week and month fields live on that entry, inside `fields`:
+
+- `goals`: object with `thesis`, `career`, and `health`. Each value is `{ "progress": string, "score": number 1-5, "next": string }`. Omit a goal you are not tracking.
+- `difficulty`: string. Too easy, too hard, or about right.
+- `audit`: string. A chosen-versus-momentum review for the week or month.
+
+`goals` is not `goalsReview`. Keep the existing review fields as they are.
+
 ## Write rules
 
 - Set `updatedAt` to the current UTC ISO-8601 time on every entry you change. The website keeps the entry with the newer `updatedAt`.

@@ -190,6 +190,7 @@
     persist();
     paintCompletion();
     refreshJournalPlay();
+    refreshPractice();
     scheduleSave();
   }
 
@@ -692,6 +693,254 @@
     });
   }
 
+  var DAY_TEMPLATE = {
+    mood: true,
+    energy: true,
+    focus: true,
+    grateful: true,
+    makeGreat: true,
+    affirmation: true,
+    highlights: true,
+    better: true
+  };
+
+  function textLines(value, limit) {
+    var raw = [];
+    if (Array.isArray(value)) raw = value;
+    else if (value && typeof value === "object" && Array.isArray(value.items)) raw = value.items;
+    else if (value != null && String(value).trim()) raw = String(value).split(/\r?\n/);
+    var out = [];
+    raw.forEach(function (item) {
+      var text = item && typeof item === "object" ? item.text : item;
+      text = String(text == null ? "" : text).trim();
+      if (text) out.push(text);
+    });
+    return limit ? out.slice(0, limit) : out;
+  }
+
+  function practiceHead(title, citeKey) {
+    var row = node("div", "lbl-row");
+    row.appendChild(node("span", "lbl", title));
+    if (citeKey) row.appendChild(infoButton(citeKey));
+    return row;
+  }
+
+  function practiceBlock(key, title, citeKey, body, emptyPrompt) {
+    var wrap = node("div", "field");
+    wrap.setAttribute("data-field", key);
+    wrap.appendChild(practiceHead(title, citeKey));
+    if (body) wrap.appendChild(body);
+    else {
+      wrap.setAttribute("data-empty", "1");
+      wrap.appendChild(node("p", "prompt", emptyPrompt));
+    }
+    return wrap;
+  }
+
+  function textBody(value) {
+    var text = String(value == null ? "" : value).trim();
+    return text ? node("p", "val", text) : null;
+  }
+
+  function lineList(lines, className) {
+    var list = node("ol", className || "priorities");
+    lines.forEach(function (line) { list.appendChild(node("li", "", line)); });
+    return list;
+  }
+
+  function gratefulBody(value) {
+    var lines = trioLines(value);
+    if (!lines.length) return null;
+    var list = node("ul", "trio");
+    lines.forEach(function (line) { list.appendChild(node("li", "", line)); });
+    return list;
+  }
+
+  function feelingMeter(value) {
+    var text = String(value == null ? "" : value).trim();
+    var box = node("div", "meter feeling-meter");
+    var copy = node("div");
+    box.setAttribute("data-field", "feeling");
+    if (!text) box.setAttribute("data-empty", "1");
+    copy.appendChild(practiceHead("Feeling", "feelings"));
+    copy.appendChild(text ? node("b", "", text) : node("p", "prompt", "A precise emotion word"));
+    box.appendChild(copy);
+    return box;
+  }
+
+  function prioritiesField(fields, todos) {
+    var lines = textLines(fields.priorities, 3);
+    var source = lines.length ? "priorities" : "";
+    var note = "";
+    if (!lines.length) {
+      var mits = [];
+      var rest = [];
+      todos.forEach(function (todo) {
+        var text = String(todo && todo.text || "").trim();
+        if (!text) return;
+        if (todo.mit === true) mits.push(text);
+        else rest.push(text);
+      });
+      if (mits.length) {
+        lines = mits.slice(0, 3);
+        source = "mit";
+        note = "From the most important to-dos.";
+      } else if (rest.length) {
+        lines = rest.slice(0, 3);
+        source = "todos";
+        note = "From today's to-dos.";
+      }
+    }
+    var body = null;
+    if (lines.length) {
+      body = node("div");
+      body.appendChild(lineList(lines, "priorities"));
+      if (note) body.appendChild(node("p", "prompt", note));
+    }
+    var wrap = practiceBlock("priorities", "Priorities", "", body, "Up to 3 priorities");
+    wrap.setAttribute("data-priorities-source", source || "none");
+    return wrap;
+  }
+
+  function mountMorning(fields, todos) {
+    var section = node("section", "card practice");
+    var meters = node("div", "meters");
+    section.appendChild(node("h3", "", "\uD83C\uDF05 Morning"));
+    if (isScore(fields.mood)) meters.appendChild(meter({ key: "mood", label: "Mood" }, fields.mood));
+    if (isScore(fields.energy)) meters.appendChild(meter({ key: "energy", label: "Energy" }, fields.energy));
+    meters.appendChild(feelingMeter(fields.feeling));
+    section.appendChild(meters);
+    section.appendChild(practiceBlock("focus", "Intention", "", textBody(fields.focus, "val intention"), "Intention or focus word"));
+    section.appendChild(prioritiesField(fields, todos));
+    section.appendChild(practiceBlock("failureCost", "If I skip #1", "failure", textBody(fields.failureCost), "What happens if I don't do #1 today?"));
+    section.appendChild(practiceBlock("ifThen", "If-then", "obstacle", textBody(fields.ifThen), "Main obstacle, and my if-then plan."));
+    section.appendChild(practiceBlock("grateful", "Grateful", "gratitude", gratefulBody(fields.grateful), "What am I grateful for?"));
+    if (isFilled({ type: "area" }, fields.makeGreat)) section.appendChild(fieldView({ type: "area", label: "\u2728 What will make today great" }, fields.makeGreat));
+    if (isFilled({ type: "text" }, fields.affirmation)) section.appendChild(fieldView({ type: "text", label: "\uD83D\uDDE3\uFE0F Daily affirmation" }, fields.affirmation));
+    return section;
+  }
+
+  function mountEvening(fields) {
+    var section = node("section", "card practice");
+    var wins = textLines(fields.wins);
+    var tomorrow = textLines(fields.tomorrow, 3);
+    section.appendChild(node("h3", "", "\uD83C\uDF19 Evening"));
+    section.appendChild(practiceBlock("wins", "Wins", "effort", wins.length ? lineList(wins, "wins") : null, "Name the effort, not only the result."));
+    section.appendChild(practiceBlock("lesson", "Lesson", "", textBody(fields.lesson), "What did I learn?"));
+    section.appendChild(practiceBlock("chosenVsMomentum", "Chosen or autopilot", "reviews", textBody(fields.chosenVsMomentum), "What did I choose today, versus doing it on autopilot?"));
+    section.appendChild(practiceBlock("tomorrow", "Tomorrow", "", tomorrow.length ? lineList(tomorrow, "priorities") : null, "Top 3 for tomorrow"));
+    if (String(fields.highlights || "").trim()) section.appendChild(fieldView({ type: "area", label: "\uD83C\uDF1F Highlights" }, fields.highlights));
+    if (String(fields.better || "").trim()) section.appendChild(fieldView({ type: "area", label: "\uD83C\uDF31 How today could have been better" }, fields.better));
+    return section;
+  }
+
+  function mountDayPractice(fields, todos) {
+    var wrap = node("div", "practice-day");
+    wrap.setAttribute("data-practice", "day");
+    wrap.appendChild(mountMorning(fields, todos));
+    wrap.appendChild(mountEvening(fields));
+    return wrap;
+  }
+
+  function goalCard(id, label, raw) {
+    var card = node("article", "goal-card");
+    var goal = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+    var progress = goal ? String(goal.progress || "").trim() : (typeof raw === "string" ? String(raw).trim() : "");
+    var next = goal ? String(goal.next || "").trim() : "";
+    var score = goal && isScore(goal.score) ? goal.score : null;
+    var bar, fill;
+    card.setAttribute("data-goal", id);
+    card.appendChild(node("h4", "", label));
+    if (score) {
+      card.appendChild(node("b", "", score + "/5"));
+      bar = node("span", "bar");
+      fill = node("i");
+      fill.style.setProperty("--v", score * 20 + "%");
+      bar.appendChild(fill);
+      card.appendChild(bar);
+    } else card.appendChild(node("p", "prompt", "Score 1\u20135"));
+    card.appendChild(progress ? node("p", "val", progress) : node("p", "prompt", "Progress"));
+    card.appendChild(next ? node("p", "val", "Next: " + next) : node("p", "prompt", "Next step"));
+    return card;
+  }
+
+  function periodDayKeys(kind, key) {
+    var today = JournalCore.dayKey(new Date());
+    var start;
+    var end;
+    if (kind === "week") {
+      var days = JournalCore.weekDays(key);
+      start = days[0];
+      end = days[6];
+    } else {
+      start = key + "-01";
+      end = JournalCore.shift(JournalCore.shift(key, 1) + "-01", -1);
+    }
+    if (today < end) end = today;
+    var out = [];
+    var day = start;
+    if (!start || !end || end < start) return out;
+    while (day <= end) {
+      out.push(day);
+      day = JournalCore.shift(day, 1);
+    }
+    return out;
+  }
+
+  function mountHabitSummary(kind, key) {
+    var defs = JournalCore.habitDefsOf(store);
+    var stats = JournalCore.habitStats(store, defs, periodDayKeys(kind, key));
+    var link = node("a", "habit-jump");
+    var pct = stats.overall == null ? "No habit log yet" : Math.round(stats.overall * 100) + "% done";
+    link.href = "#habits";
+    link.appendChild(node("span", "", "Habits \u00b7 " + stats.logged + (stats.logged === 1 ? " day logged" : " days logged") + " \u00b7 " + pct));
+    link.appendChild(node("span", "habit-open-label", "Open"));
+    return link;
+  }
+
+  function mountCycle(anchor) {
+    var cycle = JournalGamify.cycle(store, JournalCore.habitDefsOf(store), anchor);
+    var wrap = node("div", "field");
+    var wins = cycle.wins === 1 ? "1 win" : cycle.wins + " wins";
+    var label = cycle.phase === "test"
+      ? "Test automaticity \u00b7 day " + cycle.testDay + " of 7 \u00b7 " + wins + " in the 21 days"
+      : "Day " + cycle.day + " of 21 \u00b7 " + wins + " so far";
+    wrap.setAttribute("data-field", "cycle");
+    wrap.setAttribute("data-cycle-phase", cycle.phase);
+    wrap.setAttribute("data-cycle-day", String(cycle.day));
+    wrap.appendChild(practiceHead("21-day cycle", "habitCycle"));
+    wrap.appendChild(node("p", "val", label));
+    return wrap;
+  }
+
+  function mountPeriodPractice(fields, board) {
+    var section = node("section", "card practice");
+    var goals = fields.goals && typeof fields.goals === "object" ? fields.goals : {};
+    var grid = node("div", "goal-grid");
+    section.setAttribute("data-practice", cur.kind);
+    section.appendChild(node("h3", "", "\uD83C\uDFAF Goals"));
+    grid.appendChild(goalCard("thesis", "Thesis", goals.thesis));
+    grid.appendChild(goalCard("career", "Career", goals.career));
+    grid.appendChild(goalCard("health", "Health", goals.health));
+    section.appendChild(grid);
+    section.appendChild(practiceBlock("difficulty", "Difficulty", "moderate", textBody(fields.difficulty), "Too easy, too hard, or right?"));
+    section.appendChild(practiceBlock("audit", "Choice audit", "reviews", textBody(fields.audit), "What did I choose, versus habit or momentum?"));
+    section.appendChild(mountHabitSummary(cur.kind, cur.key));
+    if (cur.kind === "month" && board) section.appendChild(mountCycle(board.anchor));
+    return section;
+  }
+
+  function refreshPractice() {
+    var old;
+    var fields;
+    if (!cur) return;
+    fields = fieldMap(store.entries[cur.key]);
+    if (cur.kind === "day") {
+      old = els.form.querySelector(".practice-day");
+      if (old) old.replaceWith(mountDayPractice(fields, todoList(store.entries[cur.key])));
+    }
+  }
+
   function render() {
     var route = readRoute();
     var schema, fields, quote, block, review, shown = 0;
@@ -727,6 +976,8 @@
     }
     if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key, playBoard));
     else if (playBoard) els.form.appendChild(mountFeelings(playBoard));
+    if (cur.kind === "day") els.form.appendChild(mountDayPractice(fields, todoList(store.entries[cur.key])));
+    else if (cur.kind === "week" || cur.kind === "month") els.form.appendChild(mountPeriodPractice(fields, playBoard));
 
     schema.sections.forEach(function (section) {
       var box = card(section.title);
@@ -740,6 +991,7 @@
           hasTodos = true;
           return;
         }
+        if (cur.kind === "day" && DAY_TEMPLATE[field.key]) return;
         if (!isFilled(field, value)) return;
         count += 1;
         if (field.type === "scale") {
@@ -757,7 +1009,7 @@
       review = mountReview(cur.key, schema.reviewPrevTodos);
       if (review) els.form.appendChild(review);
     }
-    if (!shown && !quote) {
+    if (!shown && !quote && cur.kind !== "day" && cur.kind !== "week" && cur.kind !== "month") {
       block = node("section", "card empty");
       block.appendChild(node("span", "big", "🌱"));
       block.appendChild(node("span", "", "Nothing written for this " + schema.label.toLowerCase() + " yet."));
