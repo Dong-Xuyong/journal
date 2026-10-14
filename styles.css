@@ -1023,18 +1023,6 @@ html.dark .nudge.ease { color: hsl(32 90% 68%); }
   .habit-grid { grid-template-columns: 1fr; }
 }
 
-.journal-play .habit-note { margin: 2px 0 8px; }
-.journal-play .play-streak { margin: 0; }
-.journal-play .badges { margin: 6px 0 2px; }
-.journal-play .subhead { margin-top: 14px; }
-.subhead h3 { font-size: 0.95rem; }
-
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .spark-legend {
   display: flex;
   gap: 12px;

@@ -189,7 +189,6 @@
     ensure().updatedAt = new Date().toISOString();
     persist();
     paintCompletion();
-    refreshJournalPlay();
     refreshPractice();
     scheduleSave();
   }
@@ -497,101 +496,13 @@
     return section;
   }
 
-  function ratioBadge(label, ratio) {
-    var on = ratio.expected > 0 && ratio.done >= ratio.expected;
-    return badge(label + " " + ratio.done + "/" + ratio.expected, on);
+  function moodValue(fields) {
+    if (isScore(fields.mood)) return fields.mood;
+    if (isScore(fields.moodMeter)) return fields.moodMeter;
+    return null;
   }
 
-  function mountJournalCard(board) {
-    var section = node("section", "card journal-play");
-    var streak = board.streak;
-    var level = board.xp.level;
-    var period = board.xp.period;
-    var bits = [];
-    var bar = node("span", "rate-bar");
-    var fill = node("i");
-    var surprise = node("div", "surprise-row");
-    var balance = node("div", "pill-row");
-    var reviews = node("div", "pill-row");
-    section.setAttribute("data-journal-streak", String(streak.current));
-    section.setAttribute("data-journal-best", String(streak.best));
-    section.setAttribute("data-journal-level", String(level.level));
-    section.setAttribute("data-journal-xp", String(level.xp));
-    section.setAttribute("data-gratitude-days", String(board.gratitude.streak));
-    section.setAttribute("data-gratitude-items", String(board.gratitude.items));
-    section.setAttribute("data-balanced", board.balance.balanced ? "1" : "0");
-    section.setAttribute("data-balanced-count", String(board.balance.count));
-    section.appendChild(cardHead("\uD83D\uDCD3 Journal streak", "journalStreak"));
-    section.appendChild(node("p", "play-streak", streak.current ? streak.current + (streak.current === 1 ? " day in a row" : " days in a row") : "No streak yet"));
-    section.appendChild(node("p", "habit-note", "Best " + streak.best));
-    var badges = node("div", "badges");
-    streak.badges.forEach(function (item) {
-      badges.appendChild(badge(String(item.days), item.unlocked, { "data-days": String(item.days), "data-unlocked": item.unlocked ? "1" : "0" }));
-    });
-    section.appendChild(badges);
-    var effort = cardHead("\u26A1 Effort", "effort");
-    effort.classList.add("subhead");
-    section.appendChild(effort);
-    var levelRow = node("div", "level-row");
-    levelRow.appendChild(node("b", "", "Level " + level.level));
-    levelRow.appendChild(node("span", "", level.xp + " XP"));
-    section.appendChild(levelRow);
-    fill.style.setProperty("--v", Math.round((level.into / level.need) * 100) + "%");
-    bar.appendChild(fill);
-    section.appendChild(bar);
-    section.appendChild(node("p", "habit-note", level.into + " / " + level.need + " XP to the next level \u00b7 " + JournalGamify.XP_MORNING + " XP for morning or evening. A week is " + JournalGamify.XP_WEEK + ", a month " + JournalGamify.XP_MONTH + ", a quarter " + JournalGamify.XP_QUARTER + "."));
-    if (period.morning) bits.push("+" + period.morning + " morning");
-    if (period.evening) bits.push("+" + period.evening + " evening");
-    if (period.review) bits.push("+" + period.review + " review");
-    if (period.surprise) bits.push("+" + period.surprise + " surprise");
-    if (bits.length) section.appendChild(node("p", "xp-today", "This entry \u00b7 " + bits.join(" \u00b7 ")));
-    surprise.appendChild(node("span", "", "Surprise bonus"));
-    surprise.appendChild(infoButton("intermittent"));
-    surprise.setAttribute("data-surprise", period.surprise ? "1" : "0");
-    if (period.surprise) surprise.appendChild(node("span", "surprise-badge", "\uD83C\uDF81 +" + JournalGamify.XP_JOURNAL_SURPRISE + " XP"));
-    section.appendChild(surprise);
-    var thanks = cardHead("\uD83D\uDE4F Gratitude", "gratitude");
-    thanks.classList.add("subhead");
-    section.appendChild(thanks);
-    section.appendChild(node("p", "play-streak", (board.gratitude.streak ? board.gratitude.streak + (board.gratitude.streak === 1 ? " day" : " days") : "No gratitude streak") + " \u00b7 " + board.gratitude.items + (board.gratitude.items === 1 ? " item" : " items")));
-    if (cur.kind !== "day") section.appendChild(node("p", "habit-note", board.gratitude.period + " in this " + cur.kind));
-    var act = cardHead("\u2696\uFE0F Reflect and act", "balance");
-    act.classList.add("subhead");
-    section.appendChild(act);
-    if (cur.kind === "day") {
-      balance.appendChild(badge("Reflection", board.balance.reflection));
-      balance.appendChild(badge("Action", board.balance.action));
-      balance.appendChild(badge("Balanced day", board.balance.balanced, { "data-balanced-badge": board.balance.balanced ? "1" : "0" }));
-    } else {
-      balance.appendChild(badge(board.balance.count + (board.balance.count === 1 ? " balanced day" : " balanced days"), board.balance.count > 0, { "data-balanced-badge": board.balance.count > 0 ? "1" : "0" }));
-    }
-    section.appendChild(balance);
-    var audit = cardHead("\uD83D\uDD0D Reviews", "reviews");
-    audit.classList.add("subhead");
-    section.appendChild(audit);
-    reviews.appendChild(ratioBadge("Week", board.reviews.week));
-    reviews.appendChild(ratioBadge("Weeks", board.reviews.weeks));
-    reviews.appendChild(ratioBadge("Month", board.reviews.month));
-    reviews.appendChild(ratioBadge("Quarter", board.reviews.quarter));
-    reviews.setAttribute("data-review-weeks", board.reviews.weeks.done + "/" + board.reviews.weeks.expected);
-    section.appendChild(reviews);
-    return section;
-  }
-
-  function refreshJournalPlay() {
-    var board, play, feel, strip;
-    if (!cur || (cur.kind !== "day" && cur.kind !== "week" && cur.kind !== "month")) return;
-    if (!els.form.querySelector(".journal-play")) return;
-    board = JournalGamify.journalBoard(store, journalView());
-    play = els.form.querySelector(".journal-play");
-    if (play) play.replaceWith(mountJournalCard(board));
-    feel = els.form.querySelector(".journal-feelings");
-    if (feel) feel.replaceWith(mountFeelings(board));
-    strip = els.form.querySelector(".mood-strip");
-    if (strip) strip.replaceWith(mountStrip(cur.key, board));
-  }
-
-  function mountStrip(key, board) {
+  function mountStrip(key, trends) {
     var section = node("section", "card mood-strip");
     var strip = node("div", "strip");
     var today = JournalCore.dayKey(new Date());
@@ -603,25 +514,26 @@
     }
     JournalCore.weekDays(key).forEach(function (dayKey) {
       var fields = fieldMap(store.entries[dayKey]);
+      var mood = moodValue(fields);
       var link = node("a", dayKey === today ? "today" : "");
       var wd = new Date(Date.UTC(+dayKey.slice(0, 4), +dayKey.slice(5, 7) - 1, +dayKey.slice(8, 10))).getUTCDay();
-      if (isScore(fields.mood)) moods.push(fields.mood);
+      if (mood) moods.push(mood);
       if (isScore(fields.energy)) energies.push(fields.energy);
       link.href = "#day/" + dayKey;
       link.appendChild(node("span", "", WEEKDAYS[wd]));
-      link.appendChild(node("span", "emo", isScore(fields.mood) ? MOOD[fields.mood - 1] : "·"));
+      link.appendChild(node("span", "emo", mood ? MOOD[mood - 1] : "·"));
       link.appendChild(node("span", "", isScore(fields.energy) ? ENERGY[fields.energy - 1] : "·"));
       strip.appendChild(link);
     });
     section.appendChild(cardHead("\uD83D\uDCCA Mood & energy", "feelings"));
     section.appendChild(strip);
     section.appendChild(node("p", "avg", "Week average \u00b7 \uD83D\uDE0A " + avg(moods) + " mood \u00b7 \u26A1 " + avg(energies) + " energy"));
-    if (board) {
-      section.appendChild(badge("Logged feelings", board.feelings.badge, { "data-logged-feelings": board.feelings.badge ? "1" : "0" }));
+    if (trends) {
+      section.appendChild(badge("Logged feelings", trends.feelings.badge, { "data-logged-feelings": trends.feelings.badge ? "1" : "0" }));
       section.appendChild(sparkLegend());
-      section.appendChild(feelingStat("7 days", board.feelings.week));
-      section.appendChild(feelingStat("30 days", board.feelings.month));
-      section.setAttribute("data-feelings", board.feelings.badge ? "1" : "0");
+      section.appendChild(feelingStat("7 days", trends.feelings.week));
+      section.appendChild(feelingStat("30 days", trends.feelings.month));
+      section.setAttribute("data-feelings", trends.feelings.badge ? "1" : "0");
     }
     return section;
   }
@@ -711,7 +623,7 @@
     else if (value != null && String(value).trim()) raw = String(value).split(/\r?\n/);
     var out = [];
     raw.forEach(function (item) {
-      var text = item && typeof item === "object" ? item.text : item;
+      var text = item && typeof item === "object" ? (item.text || item.title || item.label || item.name) : item;
       text = String(text == null ? "" : text).trim();
       if (text) out.push(text);
     });
@@ -773,6 +685,13 @@
     var source = lines.length ? "priorities" : "";
     var note = "";
     if (!lines.length) {
+      lines = textLines(fields.top3, 3);
+      if (lines.length) {
+        source = "top3";
+        note = "From this morning's top 3.";
+      }
+    }
+    if (!lines.length) {
       var mits = [];
       var rest = [];
       todos.forEach(function (todo) {
@@ -806,7 +725,8 @@
     var section = node("section", "card practice");
     var meters = node("div", "meters");
     section.appendChild(node("h3", "", "\uD83C\uDF05 Morning"));
-    if (isScore(fields.mood)) meters.appendChild(meter({ key: "mood", label: "Mood" }, fields.mood));
+    var moodScore = moodValue(fields);
+    if (moodScore) meters.appendChild(meter({ key: "mood", label: "Mood" }, moodScore));
     if (isScore(fields.energy)) meters.appendChild(meter({ key: "energy", label: "Energy" }, fields.energy));
     meters.appendChild(feelingMeter(fields.feeling));
     section.appendChild(meters);
@@ -969,15 +889,14 @@
       block.appendChild(node("p", "", quote));
       els.form.appendChild(block);
     }
-    var playBoard = null;
+    var trends = null;
     if (cur.kind === "day" || cur.kind === "week" || cur.kind === "month") {
-      playBoard = JournalGamify.journalBoard(store, journalView());
-      els.form.appendChild(mountJournalCard(playBoard));
+      trends = JournalGamify.moodTrends(store, journalView());
     }
-    if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key, playBoard));
-    else if (playBoard) els.form.appendChild(mountFeelings(playBoard));
+    if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key, trends));
+    else if (trends) els.form.appendChild(mountFeelings(trends));
     if (cur.kind === "day") els.form.appendChild(mountDayPractice(fields, todoList(store.entries[cur.key])));
-    else if (cur.kind === "week" || cur.kind === "month") els.form.appendChild(mountPeriodPractice(fields, playBoard));
+    else if (cur.kind === "week" || cur.kind === "month") els.form.appendChild(mountPeriodPractice(fields, trends));
 
     schema.sections.forEach(function (section) {
       var box = card(section.title);
@@ -1013,10 +932,7 @@
       block = node("section", "card empty");
       block.appendChild(node("span", "big", "🌱"));
       block.appendChild(node("span", "", "Nothing written for this " + schema.label.toLowerCase() + " yet."));
-      var playCard = els.form.querySelector(".journal-play");
-      if (playCard && playCard.nextSibling) els.form.insertBefore(block, playCard.nextSibling);
-      else if (playCard) els.form.appendChild(block);
-      else els.form.insertBefore(block, els.form.firstChild);
+      els.form.insertBefore(block, els.form.firstChild);
     }
     if (document.fonts) document.fonts.ready.then(fitAll);
   }

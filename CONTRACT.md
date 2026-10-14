@@ -76,7 +76,7 @@ Omit any of these when you have nothing to write. The website still shows the pr
 
 Day fields live on the day entry, inside `fields`:
 
-- `priorities`: array of up to 3 strings, the day's top items. If you omit it, the website uses up to 3 to-dos marked `mit: true`, or the first to-dos with text.
+- `priorities`: array of up to 3 strings, the day's top items. If you omit it, the website uses `top3`, then up to 3 to-dos marked `mit: true`, then the first to-dos with text.
 - `failureCost`: string. What happens if priority 1 does not get done today.
 - `ifThen`: string. The main obstacle and the if-then plan.
 - `wins`: array of strings. Name the effort, not only the result. This is not the week `wins` paragraph.
@@ -85,7 +85,16 @@ Day fields live on the day entry, inside `fields`:
 - `chosenVsMomentum`: string. What was chosen today versus done on autopilot.
 - `tomorrow`: array of up to 3 strings.
 
-A day to-do may include `"mit": true` when it is one of the most important tasks. That flag is optional. The website still treats `done` as the action for a balanced day.
+A day to-do may include `"mit": true` when it is one of the most important tasks. That flag is optional. When `priorities` and `top3` are both empty, the website uses those to-dos as the priorities list.
+
+## Mirror / Morning Brief fields
+
+The Mirror app may write these keys on a day entry, inside `fields`. Leave them in place. Do not delete them, and do not rebuild `fields` from a fixed list.
+
+- `top3`: up to 3 items from the morning brief. Each item is a string, or an object with `text`, `title`, `label`, or `name`. When `priorities` is empty, the website shows `top3` as the priorities list and notes that it came from this morning's top 3.
+- `top3UpdatedAt`: when the morning brief last wrote `top3`. The website keeps it and does not render it.
+- `moodMeter`: a number. When `mood` is empty and `moodMeter` is 1–5, the website shows and charts it as mood. It does not copy `moodMeter` into `mood`.
+- `sleep`, `sunlight`, `caffeine`: morning-brief values. The website keeps them and does not render them.
 
 Week and month fields live on that entry, inside `fields`:
 
