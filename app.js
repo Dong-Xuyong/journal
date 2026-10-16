@@ -229,7 +229,7 @@
   }
 
   function card(title, extra) {
-    var section = node("section", extra ? "card " + extra : "card");
+    var section = node("section", extra ? "card dx-card " + extra : "card dx-card");
     section.appendChild(node("h3", "", title));
     return section;
   }
@@ -486,7 +486,7 @@
   }
 
   function mountFeelings(board) {
-    var section = node("section", "card journal-feelings");
+    var section = node("section", "card dx-card journal-feelings");
     section.setAttribute("data-feelings", board.feelings.badge ? "1" : "0");
     section.appendChild(cardHead("\uD83D\uDCCA Mood & energy", "feelings"));
     section.appendChild(badge("Logged feelings", board.feelings.badge, { "data-logged-feelings": board.feelings.badge ? "1" : "0" }));
@@ -503,7 +503,7 @@
   }
 
   function mountStrip(key, trends) {
-    var section = node("section", "card mood-strip");
+    var section = node("section", "card dx-card mood-strip");
     var strip = node("div", "strip");
     var today = JournalCore.dayKey(new Date());
     var moods = [];
@@ -556,13 +556,15 @@
   function paintTabs() {
     els.tabs.textContent = "";
     JournalSchemas.order.forEach(function (kind) {
-      var tab = button(kind === cur.kind ? "tab active" : "tab", JournalSchemas[kind].icon + " " + JournalSchemas[kind].label);
+      var tab = button("dx-tab", JournalSchemas[kind].icon + " " + JournalSchemas[kind].label);
+      if (kind === cur.kind) tab.setAttribute("aria-current", "page");
       tab.addEventListener("click", function () {
         location.hash = "#" + kind + "/" + JournalCore.todayKey(kind, new Date());
       });
       els.tabs.appendChild(tab);
     });
-    var habitsTab = button(cur.kind === "habits" ? "tab active" : "tab", "🔥 Habits");
+    var habitsTab = button("dx-tab", "🔥 Habits");
+    if (cur.kind === "habits") habitsTab.setAttribute("aria-current", "page");
     habitsTab.addEventListener("click", function () {
       location.hash = "#habits";
     });
@@ -722,7 +724,7 @@
   }
 
   function mountMorning(fields, todos) {
-    var section = node("section", "card practice");
+    var section = node("section", "card dx-card practice");
     var meters = node("div", "meters");
     section.appendChild(node("h3", "", "\uD83C\uDF05 Morning"));
     var moodScore = moodValue(fields);
@@ -741,7 +743,7 @@
   }
 
   function mountEvening(fields) {
-    var section = node("section", "card practice");
+    var section = node("section", "card dx-card practice");
     var wins = textLines(fields.wins);
     var tomorrow = textLines(fields.tomorrow, 3);
     section.appendChild(node("h3", "", "\uD83C\uDF19 Evening"));
@@ -834,7 +836,7 @@
   }
 
   function mountPeriodPractice(fields, board) {
-    var section = node("section", "card practice");
+    var section = node("section", "card dx-card practice");
     var goals = fields.goals && typeof fields.goals === "object" ? fields.goals : {};
     var grid = node("div", "goal-grid");
     section.setAttribute("data-practice", cur.kind);
@@ -929,7 +931,7 @@
       if (review) els.form.appendChild(review);
     }
     if (!shown && !quote && cur.kind !== "day" && cur.kind !== "week" && cur.kind !== "month") {
-      block = node("section", "card empty");
+      block = node("section", "card dx-card empty");
       block.appendChild(node("span", "big", "🌱"));
       block.appendChild(node("span", "", "Nothing written for this " + schema.label.toLowerCase() + " yet."));
       els.form.insertBefore(block, els.form.firstChild);

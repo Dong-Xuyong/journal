@@ -225,7 +225,7 @@
   function renderToday(store, defs, today) {
     var board = JournalGamify.play(store, defs, today);
     var cycle = board.cycle;
-    var section = node("section", "card play-card");
+    var section = node("section", "card dx-card play-card");
     var row = node("div", "play-row");
     var ring = node("div", "day-ring" + (board.win ? " win" : ""));
     var figure = node("span", "day-ring-num");
@@ -266,7 +266,7 @@
     var board = JournalGamify.play(store, defs, today);
     var xp = board.xp;
     var todayXp = xp.today;
-    var section = node("section", "card");
+    var section = node("section", "card dx-card");
     var level = node("div", "level-row");
     var bar = node("span", "rate-bar");
     var fill = node("i");
@@ -297,7 +297,7 @@
   }
 
   function renderCards(store, defs, today, selected, onSelect) {
-    var section = node("section", "card");
+    var section = node("section", "card dx-card");
     var grid = node("div", "habit-grid");
     var tools = node("div", "mech-line");
     section.appendChild(cardHead("\u2728 Streaks"));
@@ -385,7 +385,7 @@
   }
 
   function renderHeat(store, defs, today, now, selected, onSelect) {
-    var section = node("section", "card");
+    var section = node("section", "card dx-card");
     var chips = node("div", "habit-chips");
     var scroll = node("div", "heat-scroll");
     var months = node("div", "heat-months");
@@ -587,7 +587,7 @@
   function renderTrend(kind, store, defs, today, now, selected, onSelect) {
     var count = kind === "week" ? WEEK_COUNT : MONTH_COUNT;
     var series = buildSeries(kind, count, now, today, defs, store);
-    var section = node("section", "card trend");
+    var section = node("section", "card dx-card trend");
     var chart = renderChart(series, defs, selected);
     var labels = node("div", "trend-x");
     var tip = node("p", "trend-tip");
