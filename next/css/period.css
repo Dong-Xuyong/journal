@@ -35,27 +35,6 @@ html.dark .period-view,
   max-width: 100%;
 }
 
-.period-view .period-fold > summary {
-  min-height: 44px;
-  padding: 10px 12px;
-  cursor: pointer;
-  white-space: normal;
-}
-
-.period-view .period-fold > summary h2,
-.period-view .period-fold > summary h3,
-.period-view .period-fold > summary h4 {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
-.period-view .period-fold > summary .fold-summary {
-  display: block;
-  margin-top: 4px;
-  font-weight: 500;
-}
-
 .period-view .fold-body,
 .period-view .period-fold > div {
   padding: 0 12px 12px;
@@ -160,14 +139,12 @@ html.dark .period-view,
 
 .period-view a:focus,
 .period-view button:focus,
-.period-view summary:focus,
 .period-view input:focus,
 .period-view textarea:focus,
 .period-view select:focus,
 .period-view [tabindex]:focus,
 .period-view a:focus-visible,
 .period-view button:focus-visible,
-.period-view summary:focus-visible,
 .period-view input:focus-visible,
 .period-view textarea:focus-visible,
 .period-view select:focus-visible,
