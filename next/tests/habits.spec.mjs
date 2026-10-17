@@ -100,7 +100,6 @@ function harness(data) {
     <div id="view"></div>
   </main>
   <div id="announce" class="sr-only" aria-live="polite"></div>
-  <script src="/journal/next/js/gamify.js"></script>
   <script>
     window.__fixture = ${json};
     window.__seal = JSON.stringify(window.__fixture);
@@ -319,11 +318,11 @@ async function main() {
     await page.locator("[data-fold='habit-today']").waitFor();
 
     const closed = await page.$$eval("#view .fold", function (nodes) { return nodes.map(function (el) { return el.open; }); });
-    assert.ok(closed.length === 6 && closed.every(function (open) { return open === false; }), "folds start closed");
+    assert.ok(closed.length === 5 && closed.every(function (open) { return open === false; }), "folds start closed");
     const todayText = await page.locator("[data-fold='habit-today'] .fold-summary").innerText();
     assert.match(todayText, /Today/);
-    assert.match(todayText, /Today · 4 of 7 done · win day/);
-    assert.match(await page.locator("[data-fold='habit-effort'] .fold-summary").innerText(), /^Effort · level \d+ · \d+ XP$/);
+    assert.match(todayText, /^Today · 4 of 7 done$/);
+    assert.equal(await page.locator("[data-fold='habit-effort']").count(), 0, "no Effort fold");
     assert.match(await page.locator("[data-fold='habit-streaks'] .fold-summary").innerText(), /Streaks · 4 on a streak/);
     assert.match(await page.locator("[data-fold='habit-year'] .fold-summary").innerText(), /Year in days · 17 days logged/);
     assert.match(await page.locator("[data-fold='habit-weeks'] .fold-summary").innerText(), /Week by week · \d+% done/);
@@ -433,10 +432,11 @@ async function main() {
     await page.keyboard.press("Enter");
     assert.ok((await page.locator(".heat-detail").innerText()).length > 8);
 
-    await page.locator("[data-fold='habit-effort'] .info-btn").first().click();
-    assert.equal(await page.locator("[data-fold='habit-effort'] .info-tip").first().isHidden(), false);
-    await page.keyboard.press("Escape");
-    assert.equal(await page.locator("[data-fold='habit-effort'] .info-tip").first().isHidden(), true);
+    const plain = await page.locator("#view").innerText();
+    assert.doesNotMatch(plain, /\bXP\b|\blevel \d|win day|surprise|linchpin|milestone|21-day|automaticity/i, "no gamification left");
+    assert.equal(await page.locator("#view .info-btn, #view .badge, #view .nudge, #view .day-ring").count(), 0);
+    assert.equal(await page.locator("[data-today-habit]").count(), 7);
+    assert.equal(await page.evaluate(function () { return typeof window.JournalGamify; }), "undefined");
 
     await page.locator("[data-habit='thesis'] .habit-open").click();
     assert.equal(new URL(page.url()).hash, "#habits/thesis");

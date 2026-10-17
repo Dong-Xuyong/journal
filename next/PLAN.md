@@ -77,8 +77,8 @@ To save, it fetches the latest remote file, applies only the queued operations t
 
 ## 3. Questions for Dong (only ones that block a part)
 
-1. **Should Dong be able to edit Morning, Evening, week and month fields on the page?** This blocks the field-editing part of builders 1, 3 and 5. With the new saving model it's one extra operation type. But if Grok writes the same field later, one version overwrites the other, so a design choice is needed: keep both copies, or keep Grok's. The default is that they stay Grok-written and read-only.
-2. **Keep or cut XP, levels and surprise rolls on the Habits tab?** This blocks part of builder 6. The default is to keep them.
+1. **Should Dong be able to edit Morning, Evening, week and month fields on the page?** This blocks the field-editing part of builders 1, 3 and 5. With the new saving model it's one extra operation type. But if Grok writes the same field later, one version overwrites the other, so a design choice is needed: keep both copies, or keep Grok's. The default is that they stay Grok-written and read-only. **Dong (Oct 17 2026): keep them auto-written and read-only.**
+2. **Keep or cut XP, levels and surprise rolls on the Habits tab?** This blocks part of builder 6. The default is to keep them. **Dong (Oct 17 2026): cut them; `next/js/gamify.js` is removed and Habits shows plain tracking. Stored keys are unchanged.**
 3. **Approval to cut over** once the round-trip check passes, and who runs the backup (Robin or Dong). This blocks only the final cutover PR, not the builders.
 
 ## 4. Builder briefs (grok-4.7, parallel; every builder works only inside `next/`)
@@ -205,7 +205,7 @@ mkdir -p /tmp/site/ui && ln -sfn "$PWD" /tmp/site/journal && curl -so /tmp/site/
 - Heatmap: a text or shape cue for done, missed and unknown (keep the stripes for unknown), plus a legend.
 - Charts: arrow-key navigation inside a single Tab stop (roving tabindex), with an announced label.
 - Body-habit names link to https://dong-xuyong.github.io/health/.
-- XP follows Dong's answer to question 2 and defaults to kept.
+- XP follows Dong's answer to question 2: cut. The ⓘ notes used by the day and period views live in `next/js/cites.js`.
 - `#habits/<id>` selects a habit.
 - **Acceptance at 360px:**
   - The whole view works with Tab, the arrow keys, Enter and Escape.

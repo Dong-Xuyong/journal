@@ -114,7 +114,7 @@
   }
 
   function citation(key) {
-    var cite = global.JournalGamify && typeof global.JournalGamify.cite === "function" ? global.JournalGamify.cite(key) : null;
+    var cite = global.JournalCites && typeof global.JournalCites.cite === "function" ? global.JournalCites.cite(key) : null;
     if (!cite || !cite.text) return null;
     return cite;
   }

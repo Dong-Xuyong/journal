@@ -78,20 +78,6 @@
     return 5;
   }
 
-  function readStore(today) {
-    var entries = {};
-    var day = today;
-    var i;
-    var entry;
-    for (i = 0; i < HISTORY_DAYS; i++) {
-      entry = JournalData.entry(day);
-      if (entry) entries[day] = entry;
-      day = JournalData.shift(day, -1);
-      if (!day) break;
-    }
-    return { entries: entries };
-  }
-
   function currentStreak(id, today) {
     var key = today;
     var status = JournalData.habitStatus(key, id);
@@ -216,136 +202,48 @@
     return made;
   }
 
-  function todayLine(board, defs) {
-    if (!board.logged) return "Today · no log yet";
-    var line = "Today · " + board.done + " of " + defs.length + " done";
-    if (board.win) line += " · win day";
-    return line;
-  }
-
-  function renderToday(store, defs, today) {
-    var board = JournalGamify.play(store, defs, today);
-    var cycle = board.cycle;
-    var made = section("habit-today", "Today", todayLine(board, defs));
-    var row = node("div", "play-row");
-    var ring = node("div", "day-ring" + (board.win ? " win" : ""));
-    var figure = node("span", "day-ring-num");
-    var copy = node("div", "play-copy");
-    var bar = node("span", "rate-bar");
-    var fill = node("i");
-    var wins = cycle.wins === 1 ? "1 win" : cycle.wins + " wins";
-    var head = node("div", "cite-row");
-    ring.style.setProperty("--p", String(Math.round((defs.length ? Math.min(1, board.done / defs.length) : 0) * 100)));
-    ring.setAttribute("data-done", String(board.done));
-    ring.setAttribute("data-win", board.win ? "1" : "0");
-    figure.appendChild(node("strong", "", String(board.done)));
-    figure.appendChild(node("span", "", "/" + defs.length));
-    ring.appendChild(figure);
-    copy.appendChild(node("p", "play-status" + (board.win ? " win" : ""), board.logged ? (board.win ? "Win day" : "Not a win yet") : "No log yet"));
-    copy.appendChild(node("p", "play-streak", board.winStreak ? board.winStreak + (board.winStreak === 1 ? " win day in a row" : " win days in a row") : "No win streak yet"));
-    if (cycle.phase === "test") {
-      copy.appendChild(node("p", "cycle-label", "Test automaticity, day " + cycle.testDay + " of 7"));
-      copy.appendChild(node("p", "habit-note cycle-wins", wins + " in the 21 days"));
-    } else {
-      copy.appendChild(node("p", "cycle-label", "Day " + cycle.day + " of 21"));
-      copy.appendChild(node("p", "habit-note cycle-wins", wins + " so far"));
-    }
-    fill.style.setProperty("--v", Math.round(cycle.progress * 100) + "%");
-    bar.appendChild(fill);
-    bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", "Cycle progress " + Math.round(cycle.progress * 100) + " percent");
-    copy.appendChild(bar);
-    copy.setAttribute("data-cycle-day", String(cycle.day));
-    copy.setAttribute("data-cycle-phase", cycle.phase);
-    row.appendChild(ring);
-    row.appendChild(copy);
-    head.appendChild(node("span", "", "21-day system"));
-    head.appendChild(JournalUI.info("twentyOne"));
-    made.body.appendChild(head);
-    made.body.appendChild(row);
-    made.body.appendChild(node("p", "habit-note", "A win is " + JournalGamify.WIN_AT + " or more done today. Missed habits are not made up tomorrow."));
+  function renderToday(defs, today) {
+    var day = daySummary(today, defs);
+    var line = day.state === "none" ? "Today \u00b7 no log yet" : "Today \u00b7 " + day.done + " of " + defs.length + " done";
+    var made = section("habit-today", "Today", line);
+    var list = node("ul", "today-list");
+    defs.forEach(function (def) {
+      var status = JournalData.habitStatus(today, def.id);
+      var item = node("li", "today-item");
+      var emoji = node("span", "habit-emoji", def.emoji || "");
+      emoji.setAttribute("aria-hidden", "true");
+      item.setAttribute("data-today-habit", def.id);
+      item.appendChild(emoji);
+      item.appendChild(node("span", "today-name", def.label));
+      item.appendChild(node("span", "today-pill " + status, statusText(status)));
+      list.appendChild(item);
+    });
+    made.body.appendChild(list);
     return made.root;
   }
 
-  // Levels, XP, and surprise rolls. Remove this function's call to drop them.
-  function renderEffort(store, defs, today) {
-    var board = JournalGamify.play(store, defs, today);
-    var xp = board.xp;
-    var todayXp = xp.today;
-    var made = section("habit-effort", "Effort", "Effort · level " + xp.level + " · " + xp.xp + " XP");
-    var levelRow = node("div", "level-row");
-    var bar = node("span", "rate-bar");
-    var fill = node("i");
-    var surprise = node("div", "surprise-row");
-    var bits;
-    var head = node("div", "cite-row");
-    made.root.setAttribute("data-level", String(xp.level));
-    made.root.setAttribute("data-xp", String(xp.xp));
-    head.appendChild(node("span", "", "Effort"));
-    head.appendChild(JournalUI.info("effort"));
-    made.body.appendChild(head);
-    levelRow.appendChild(node("b", "", "Level " + xp.level));
-    levelRow.appendChild(node("span", "", xp.xp + " XP"));
-    fill.style.setProperty("--v", Math.round((xp.into / xp.need) * 100) + "%");
-    bar.appendChild(fill);
-    bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", xp.into + " of " + xp.need + " XP to the next level");
-    made.body.appendChild(levelRow);
-    made.body.appendChild(bar);
-    made.body.appendChild(node("p", "habit-note", xp.into + " / " + xp.need + " XP to the next level. " + JournalGamify.XP_HABIT + " XP a habit, " + JournalGamify.XP_WIN + " XP on a win day."));
-    if (board.logged && todayXp.done > 0) {
-      bits = ["+" + todayXp.habit + " habits"];
-      if (todayXp.win) bits.push("+" + todayXp.win + " win");
-      if (todayXp.surprise) bits.push("+" + todayXp.surprise + " surprise");
-      made.body.appendChild(node("p", "xp-today", "Today · " + bits.join(" · ")));
-    }
-    surprise.appendChild(node("span", "", "Surprise bonus"));
-    surprise.appendChild(JournalUI.info("intermittent"));
-    surprise.setAttribute("data-surprise", todayXp.surprise ? "1" : "0");
-    if (todayXp.surprise) surprise.appendChild(node("span", "surprise-badge", "+" + JournalGamify.XP_SURPRISE + " XP"));
-    made.body.appendChild(surprise);
-    return made.root;
-  }
-
-  function renderStreaks(store, defs, today, selected, onSelect) {
+  function renderStreaks(defs, today, selected, onSelect) {
     var onStreak = 0;
     var i;
     var made;
-    var tools;
     var grid;
     for (i = 0; i < defs.length; i++) if (currentStreak(defs[i].id, today) > 0) onStreak += 1;
     made = section("habit-streaks", "Streaks", onStreak === 0 ? "Streaks · no streak yet" : onStreak === 1 ? "Streaks · 1 on a streak" : "Streaks · " + onStreak + " on a streak");
-    tools = node("div", "mech-line");
-    tools.appendChild(mech("Identity", "identity"));
-    tools.appendChild(mech("Milestones", "milestones"));
-    tools.appendChild(mech("Difficulty", "moderate"));
-    made.body.appendChild(tools);
     grid = node("div", "habit-grid");
     defs.forEach(function (def) {
-      grid.appendChild(habitTile(store, def, today, selected, onSelect));
+      grid.appendChild(habitTile(def, today, selected, onSelect));
     });
     made.body.appendChild(grid);
     return made.root;
   }
 
-  function mech(label, citeKey) {
-    var item = node("span", "mech");
-    item.appendChild(node("span", "", label));
-    item.appendChild(JournalUI.info(citeKey));
-    return item;
-  }
-
-  function habitTile(store, def, today, selected, onSelect) {
+  function habitTile(def, today, selected, onSelect) {
     var status = JournalData.habitStatus(today, def.id);
     var current = currentStreak(def.id, today);
     var best = bestStreak(def.id, today);
     var streakLabel = current === 1 ? "day in a row" : "days in a row";
-    var linchpin = JournalGamify.isLinchpin(def.id);
-    var tile = node("article", "habit-tile" + (selected === def.id ? " on" : "") + (linchpin ? " linchpin" : ""));
+    var tile = node("article", "habit-tile" + (selected === def.id ? " on" : ""));
     var open = button("habit-open");
-    var badges = node("div", "badges");
-    var hint = JournalGamify.nudge(store, def.id, today);
-    var ident = node("p", "identity");
     var name;
     var emoji = node("span", "habit-emoji", def.emoji || "");
     tile.setAttribute("data-habit", def.id);
@@ -372,22 +270,6 @@
       name.setAttribute("data-focus", "link:" + def.id);
       tile.appendChild(name);
     }
-    ident.textContent = JournalGamify.identityOf(def.id);
-    tile.appendChild(ident);
-    if (linchpin) {
-      var mark = node("p", "linchpin-mark");
-      mark.appendChild(node("span", "", "Linchpin"));
-      mark.appendChild(JournalUI.info("linchpin"));
-      tile.appendChild(mark);
-    }
-    JournalGamify.milestoneStates(best).forEach(function (item) {
-      var badge = node("span", "badge" + (item.unlocked ? " on" : ""), String(item.days));
-      badge.setAttribute("data-days", String(item.days));
-      badge.setAttribute("data-unlocked", item.unlocked ? "1" : "0");
-      badges.appendChild(badge);
-    });
-    tile.appendChild(badges);
-    if (hint) tile.appendChild(node("p", "nudge " + hint.kind, hint.text));
     return tile;
   }
 
@@ -845,15 +727,13 @@
     var defs;
     var today;
     var selected;
-    var store;
     opts = opts || {};
-    if (!window.JournalData || !window.JournalUI || !window.JournalGamify) {
-      throw new Error("Habits view needs JournalData, JournalUI, and JournalGamify");
+    if (!window.JournalData || !window.JournalUI) {
+      throw new Error("Habits view needs JournalData and JournalUI");
     }
     today = opts.today || JournalData.todayKey("day", new Date());
     defs = JournalData.habitDefs();
     selected = selectedId(opts.key, defs);
-    store = readStore(today);
     root.classList.add("habit-view");
     root.textContent = "";
 
@@ -865,9 +745,8 @@
       render(root, { key: next, today: today, focus: focus });
     }
 
-    root.appendChild(renderToday(store, defs, today));
-    root.appendChild(renderEffort(store, defs, today));
-    root.appendChild(renderStreaks(store, defs, today, selected, onSelect));
+    root.appendChild(renderToday(defs, today));
+    root.appendChild(renderStreaks(defs, today, selected, onSelect));
     root.appendChild(renderHeat(defs, today, selected, onSelect));
     root.appendChild(renderTrend("week", defs, today, selected, onSelect));
     root.appendChild(renderTrend("month", defs, today, selected, onSelect));

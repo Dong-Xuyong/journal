@@ -146,7 +146,13 @@ async function routes(browser) {
     if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "Year>Quarter>Month>Week>Day", info.crumbs);
     if (hash === "#quarter/2026-Q4") check("quarter breadcrumb", info.crumbs === "Year>Quarter", info.crumbs);
     if (hash === "#habits/thesis") check("habit breadcrumb", info.crumbs === "Habits>Thesis", info.crumbs);
+    if (hash === "#habits") {
+      const plain = await page.locator("#view").innerText();
+      check("habits has no XP, levels, win days or surprises", !/\bXP\b|\blevel \d|win day|surprise|linchpin/i.test(plain));
+      check("habits has five folds", info.folds === 5, String(info.folds));
+    }
   }
+  check("JournalGamify is gone", (await page.evaluate(function () { return typeof window.JournalGamify; })) === "undefined");
   check("no page errors or GitHub calls without a token", !page.errors.length, page.errors.join("; "));
   await page.context().close();
 }
@@ -173,9 +179,11 @@ async function dayCopy(browser) {
     return {
       label: field.querySelector(".day-label").getBoundingClientRect().width,
       tip: field.querySelector(".info-tip").getBoundingClientRect().width,
-      sw: document.documentElement.scrollWidth
+      sw: document.documentElement.scrollWidth,
+      text: field.querySelector(".info-text").textContent
     };
   });
+  check("tip text comes from cites.js", tip.text === "Seeing what you lose if you skip it makes you more likely to do it.", tip.text);
   check("open tip sits under the label at full width", tip.label > 150 && tip.tip > 250 && tip.sw <= 360, JSON.stringify(tip));
   const tipAxe = await axeBad(page);
   check("axe AA with a tip open", !tipAxe.length, tipAxe.join("; "));
