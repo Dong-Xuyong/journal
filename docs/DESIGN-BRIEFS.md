@@ -1,12 +1,31 @@
 > Historical briefs. Since the cutover, the `next/` paths below live at the repo root (`js/`, `css/`, `tests/`), and `/journal/next/` redirects to `/journal/`.
 
+# Morning presentation (Dong, Oct 17 2026)
+
+Presentation only. The `journal.json` shape does not change, stored text is not rewritten, and the page stays read-only.
+
+1. **No info buttons.** Do not render the circled ⓘ, or any similar info icon, on any day or period field. `JournalUI.info` returns nothing.
+2. **Morning sub-heading emoji.** Each of these has one emoji in `.day-sub-emoji` (`aria-hidden`), in addition to the Morning fold emoji 🌅. This relaxes "one emoji per section" for these sub-headings. The emoji is not a `.fold-emoji`, and each `.fold-summary` still has exactly one `.fold-emoji`. A sub-heading, list item, or chip still has at most one emoji.
+   - Focus 🎯
+   - Priorities 📌
+   - If I skip #1 🔁
+   - Grateful 🙏
+   - What would make today great 🌟
+3. **Accent per morning sub-section.** A left border and a tinted background, one hue each, including If this happens and A line to repeat. Text stays the normal text colour. Never red text. The hues come from `--jn-s0` … `--jn-s6`.
+4. **Focus is a pill.** The focus value is `.day-focus-pill`, coloured, not a second line of plain text.
+5. **Amber chips for times and deadlines.** `.jn-mark` wraps matches in rendered field text. The characters inside the chip are the stored characters. Nothing is written back. Match:
+   - 24-hour times `H:MM` or `HH:MM`, with optional seconds
+   - dates: `YYYY-MM-DD`, `28 Oct`, `28 October 2026`, `Oct 28`, `28/10/2026`
+   - a deadline phrase — `expires`, `due`, or `deadline`, plus a date — as one chip, for example `expires 28 Oct`
+6. **Dashed lines are lists.** Any rendered field whose lines start with `- ` is a real list. The marker is not shown. The words after it stay verbatim. To-dos and reflection answers are Dong's own text and are not rewritten.
+
 # Journal next — design pass briefs
 
 Dong's feedback on the Day view (Oct 17 2026), applied to all of `next/`, Journal and Habits:
 
 1. **Compact cards.** Tighter padding, smaller row height.
 2. **No red text** except real errors.
-3. **One emoji per section or row,** for example Quote 💬, Mood 🙂, Morning 🌅, Evening 🌙, Reflection 🪞, To-dos ✅.
+3. **One emoji per fold,** for example Quote 💬, Mood 🙂, Morning 🌅, Evening 🌙, Reflection 🪞, To-dos ✅. Morning sub-headings are the exception in the section above.
 4. **No exclamation points** in UI copy or in the generated text the page shows.
 5. **New visuals:** mood and energy chips, and small progress dots instead of big rings or big numbers.
 
@@ -148,7 +167,8 @@ Emoji map (one per fold; rows inside a fold get at most one each):
   - **Emoji:**
     - Every `.fold-summary` has exactly one `.fold-emoji`.
     - `.fold-line` contains no emoji.
-    - No `li`, `p` or `.jn-chip` contains more than one emoji.
+    - No `li`, `p` or `.jn-chip` contains more than one emoji. A Morning sub-heading may contain its one `.day-sub-emoji`.
+  - No `.info-btn` anywhere.
   - **Compact sizes:**
     - A closed `.fold` is at most 48px tall.
     - The gap between adjacent cards is at most 10px.
@@ -179,7 +199,7 @@ Emoji map (one per fold; rows inside a fold get at most one each):
   - A missing score shows the "not logged" dots.
   - Show the same two chips, small, at the end of the closed Evening row, as dots without labels and `aria-hidden`. The text summary stays "Evening · mood 4 / energy 4 · 2 wins".
 - **Priorities:** show the three priorities as a compact numbered list, with one line each at 360px and wrapping only if needed.
-- **Compact fields:** label and value on tight lines (label 0.85rem, 600 weight, muted but still at least 4.5:1). 6px between fields. No more than one ⓘ button per field, at 28px in a 32px row.
+- **Compact fields:** label and value on tight lines (label 0.85rem, 600 weight, muted but still at least 4.5:1). 6px between fields. No info buttons.
 - **"Not written yet: …" line:** neutral muted text, not red or orange.
 - **"Still open from yesterday":** each row is `↩️ text [Add]`, with a 32px Add button.
 - **Text filtering:** run every Grok-written value through `JournalUI.plain()`: quote, focus, priorities, failureCost, ifThen, grateful, makeGreat, affirmation, feeling, wins, lesson, chosenVsMomentum, tomorrow, highlights and better.

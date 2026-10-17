@@ -440,7 +440,8 @@ async function scanRoute(page, hash) {
         return Math.ceil(bottom);
       })(),
       habits: /\\bXP\\b|\\blevel \\d|win day|surprise|linchpin/i.test(habits),
-      sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
+      sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+      info: document.querySelectorAll(".info-btn").length
     };
   `));
 }
@@ -464,6 +465,7 @@ async function routes(page) {
         const state = theme + (open ? " open" : " closed");
         const found = await scanRoute(page, hash);
         check("route", hash + " " + state + " no exclamation outside own text", !found.bangs.length, found.bangs.join("; "));
+        check("route", hash + " " + state + " no info buttons", !found.info, String(found.info));
         check("route", hash + " " + state + " no red outside errors", !found.reds.length, found.reds.join("; "));
         check("route", hash + " " + state + " one emoji on a fold", !found.emoji.length, found.emoji.join("; "));
         check("route", hash + " " + state + " compact", !found.compact.length, found.compact.join("; "));

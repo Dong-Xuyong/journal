@@ -147,7 +147,7 @@ mkdir -p /tmp/site/ui && ln -sfn "$PWD" /tmp/site/journal && curl -so /tmp/site/
 - **`ui.js`:**
   - `fold` (the `journal-folds` key, Robin's `oneLine` summaries).
   - `todoList`: real checkboxes labelled with the to-do text, auto-growing textareas, delete with a 10-second Undo, an optional year-status chip group as a `radiogroup`, all sent through `JournalOps`.
-  - `info` (wiki citation tooltips): a button with `aria-expanded`, closed by Escape.
+  - `info` used to open a citation tooltip. Those circled info buttons are not rendered. `JournalUI.info` returns nothing.
 - `base.css`: 4.5:1 for text and 3:1 for non-text on `--dx-card`, in light and dark; focus rings; `.sr-only`; reduced motion.
 - **Acceptance at 360px:**
   - Tab order: skip link → Home → theme toggle → tabs → breadcrumb → Previous / Today / Next → first fold.
@@ -207,7 +207,7 @@ mkdir -p /tmp/site/ui && ln -sfn "$PWD" /tmp/site/journal && curl -so /tmp/site/
 - Heatmap: a text or shape cue for done, missed and unknown (keep the stripes for unknown), plus a legend.
 - Charts: arrow-key navigation inside a single Tab stop (roving tabindex), with an announced label.
 - Body-habit names link to https://dong-xuyong.github.io/health/.
-- XP follows Dong's answer to question 2: cut. The ⓘ notes used by the day and period views live in `next/js/cites.js`.
+- XP follows Dong's answer to question 2: cut. `js/cites.js` still holds the short notes, and the page does not show them.
 - `#habits/<id>` selects a habit.
 - **Acceptance at 360px:**
   - The whole view works with Tab, the arrow keys, Enter and Escape.

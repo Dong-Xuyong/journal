@@ -14,6 +14,8 @@ The page is read-only. It has no inputs, checkboxes or save buttons: Robin edits
 
 The layout follows the nutrition app (`/health/nutrition/`): the period tabs (Day, Week, Month, Quarter, Year) sit in the top bar, a Journal / Habits switch sits under it, then the date card and the section cards. The day's reflection question and its answers are shown on the Day view, and the year's answers on the Year view.
 
+Morning sub-headings carry an emoji and a coloured accent. Focus is a pill. Times and deadlines render as amber chips, and lines that start with `- ` render as a list. Stored text is unchanged. There are no info buttons.
+
 The Habits tab is tracking only: today, streaks, the year in days, and week and month rates.
 
 `CONTRACT.md` is the writer spec for journal.json. `docs/CONTRACT-NOTES.md` covers how the page reads the file. `docs/PLAN.md` is the redesign plan and `docs/DESIGN-BRIEFS.md` the compact design pass.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  // The one-sentence notes behind the ⓘ buttons on the day and period views.
+  // Kept for other readers. The page no longer renders info buttons.
   var VIDEOS = {
     dopamine: { title: "Controlling Your Dopamine For Motivation, Focus & Satisfaction", by: "Huberman" },
     goals: { title: "How to Set & Achieve Goals | Huberman Lab Essentials", by: "Huberman" },

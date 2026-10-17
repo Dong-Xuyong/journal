@@ -6,6 +6,10 @@ Notes for `js/data.js` and `js/sync.js`. The file shape in `CONTRACT.md` does no
 
 The page never writes `journal.json` (Dong, Oct 17 2026). Robin edits the file; the page only shows it. There are no inputs, checkboxes, edit buttons or saves for habits, reflections, to-dos or mood.
 
+## Presentation
+
+Morning sub-headings, accents, the focus pill, amber time and deadline chips, and `- ` lines drawn as lists are display-only. They do not change `journal.json` or the words that were stored. Info buttons are not shown.
+
 The Habits tab shows plain tracking only (no XP, levels or surprise rolls).
 
 ## localStorage

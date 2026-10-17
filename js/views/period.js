@@ -284,19 +284,14 @@
     return made;
   }
 
-  function appendInfo(parent, citeKey) {
-    var node;
-    if (!window.JournalUI || typeof JournalUI.info !== "function") return;
-    node = JournalUI.info(citeKey);
-    if (node && node.nodeType === 1) parent.appendChild(node);
-  }
-
   function appendField(parent, spec, fields) {
     var lines = linesOf(spec, fields[spec.key]);
     var block;
     var head;
     var list;
     var i;
+    var item;
+    var text;
     if (!lines.length) return false;
     block = el("div", "period-field");
     block.setAttribute("data-field", spec.key);
@@ -307,14 +302,21 @@
     }
     head = el("div", "period-field-head");
     head.appendChild(el("h4", null, spec.label));
-    if (spec.cite) appendInfo(head, spec.cite);
     block.appendChild(head);
-    if (lines.length > 1 || spec.type === "list") {
+    if (lines.length === 1 && (lines[0].indexOf("\n") !== -1 || /^\s*-\s+/.test(lines[0]))) {
+      JournalUI.fillText(block, lines[0], { copyClass: "period-prose", listClass: "period-list" });
+    } else if (lines.length > 1 || spec.type === "list") {
       list = el("ul", "period-list");
-      for (i = 0; i < lines.length; i++) list.appendChild(el("li", null, lines[i]));
+      for (i = 0; i < lines.length; i++) {
+        text = String(lines[i]).replace(/^\s*-\s+/, "");
+        item = el("li");
+        if (text.indexOf("\n") !== -1) JournalUI.fillText(item, text, { copyClass: "period-prose", listClass: "period-list" });
+        else JournalUI.appendMarked(item, text);
+        list.appendChild(item);
+      }
       block.appendChild(list);
     } else {
-      block.appendChild(el("p", "period-prose", lines[0]));
+      JournalUI.fillText(block, lines[0], { copyClass: "period-prose", listClass: "period-list" });
     }
     parent.appendChild(block);
     return true;
@@ -538,9 +540,13 @@
         block.setAttribute("data-field", "goals." + item.id);
         row.appendChild(el("span", "period-goal-name", item.label));
         row.appendChild(JournalUI.dots(score, 5, item.label + " score"));
-        if (next) row.appendChild(el("span", "period-goal-next", show(next)));
+        if (next) {
+          var nextNode = el("span", "period-goal-next");
+          JournalUI.appendMarked(nextNode, show(next).replace(/^\s*-\s+/, ""));
+          row.appendChild(nextNode);
+        }
         block.appendChild(row);
-        if (progress) block.appendChild(el("p", "period-prose", show(progress)));
+        if (progress) JournalUI.fillText(block, show(progress), { copyClass: "period-prose", listClass: "period-list" });
         fold.body.appendChild(block);
       }
     }
@@ -556,8 +562,8 @@
       emoji: FOLD_EMOJI.choices
     });
     renderSpecs(fold.body, [
-      { key: "difficulty", label: "Difficulty", short: "difficulty", missing: "difficulty", cite: "moderate" },
-      { key: "audit", label: "What I chose, versus habit or momentum", short: "choices", missing: "choices", cite: "reviews" }
+      { key: "difficulty", label: "Difficulty", short: "difficulty", missing: "difficulty" },
+      { key: "audit", label: "What I chose, versus habit or momentum", short: "choices", missing: "choices" }
     ], fields);
   }
 
