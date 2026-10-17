@@ -12,8 +12,6 @@
   ];
   var STUDY = "https://dong-xuyong.github.io/wiki-flashcards/";
 
-  var watch = { fn: null, bound: false };
-
   if (!window.JournalViews) window.JournalViews = {};
 
   function el(tag, className, text) {
@@ -81,29 +79,29 @@
     return { lines: [], source: "none", note: "" };
   }
 
-  function winCount(fields) {
-    var n = textLines(fields.wins).length;
-    if (filled(fields.highlights)) n += 1;
-    return n;
-  }
-
   function morningSummary(fields, priorities) {
     var focus = oneLine(fields.focus);
-    var focusBit = focus ? "focus: " + focus : "no focus";
-    return "Morning \u00b7 " + focusBit + " \u00b7 " + countLabel(priorities.lines.length, "priority", "priorities");
+    var n = priorities.lines.length;
+    if (!focus && !n) return "Morning \u00b7 nothing yet";
+    return JournalUI.oneLine(["Morning", focus ? "focus: " + JournalUI.clip(focus, 28) : "", n ? countLabel(n, "priority", "priorities") : ""]);
   }
 
-  function eveningSummary(mood, energy, wins) {
-    var moodBit = validScore(mood) ? "mood " + mood : "no mood";
-    var energyBit = validScore(energy) ? "energy " + energy : "no energy";
-    return "Evening \u00b7 " + moodBit + " / " + energyBit + " \u00b7 " + countLabel(wins, "win", "wins");
+  function eveningSummary(mood, energy, fields) {
+    var wins = textLines(fields.wins).length;
+    var moodBit = "";
+    if (validScore(mood) || validScore(energy)) {
+      moodBit = "mood " + (validScore(mood) ? mood : "\u2013") + " / energy " + (validScore(energy) ? energy : "\u2013");
+    }
+    if (!moodBit && !wins) return "Evening \u00b7 nothing yet";
+    return JournalUI.oneLine(["Evening", moodBit, wins ? countLabel(wins, "win", "wins") : ""]);
   }
 
   function todoSummary(todos) {
-    var done = 0;
+    var left = 0;
     var i;
-    for (i = 0; i < todos.length; i++) if (todos[i] && todos[i].done) done += 1;
-    return "To-dos \u00b7 " + done + " of " + todos.length + " done";
+    if (!todos.length) return "To-dos \u00b7 none yet";
+    for (i = 0; i < todos.length; i++) if (todos[i] && !todos[i].done) left += 1;
+    return "To-dos \u00b7 " + left + " left";
   }
 
   function missingLine(names) {
@@ -173,15 +171,15 @@
     if (typeof quote === "string") text = quote.trim();
     else if (quote && typeof quote.text === "string") text = quote.text.trim();
     if (!text) return;
-    figure = el("figure", "day-quote dx-card");
+    figure = el("figure", "day-quote");
     quoteEl = el("blockquote", "", text);
     figure.appendChild(quoteEl);
-    parent.appendChild(figure);
+    section(parent, "day:quote", "Quote", JournalUI.oneLine(["Quote", JournalUI.clip(text, 48)])).appendChild(figure);
   }
 
   function mountMorning(parent, fields, todos) {
     var priorities = prioritiesOf(fields, todos);
-    var body = section(parent, "morning", "Morning", morningSummary(fields, priorities));
+    var body = section(parent, "day:morning", "Morning", morningSummary(fields, priorities));
     var missing = [];
     var focus = oneLine(fields.focus);
     var grateful = textLines(fields.grateful);
@@ -194,14 +192,14 @@
       addList(wrap, priorities.lines, true);
       if (priorities.note) wrap.appendChild(el("p", "day-note", priorities.note));
     } else missing.push("priorities");
-    if (filled(fields.failureCost)) addCopy(field(body, "failureCost", "If the first priority is skipped", "failure"), String(fields.failureCost).trim());
-    else missing.push("if the first priority is skipped");
-    if (filled(fields.ifThen)) addCopy(field(body, "ifThen", "If-then plan", "obstacle"), String(fields.ifThen).trim());
-    else missing.push("if-then plan");
+    if (filled(fields.failureCost)) addCopy(field(body, "failureCost", "If I skip #1", "failure"), String(fields.failureCost).trim());
+    else missing.push("if I skip #1");
+    if (filled(fields.ifThen)) addCopy(field(body, "ifThen", "If this happens", "obstacle"), String(fields.ifThen).trim());
+    else missing.push("if this happens");
     if (grateful.length) addList(field(body, "grateful", "Grateful", "gratitude"), grateful, false);
     else missing.push("grateful");
-    if (filled(fields.makeGreat)) addCopy(field(body, "makeGreat", "What will make today great"), String(fields.makeGreat).trim());
-    if (filled(fields.affirmation)) addCopy(field(body, "affirmation", "Daily affirmation"), String(fields.affirmation).trim());
+    if (filled(fields.makeGreat)) addCopy(field(body, "makeGreat", "What would make today great"), String(fields.makeGreat).trim());
+    if (filled(fields.affirmation)) addCopy(field(body, "affirmation", "A line to repeat"), String(fields.affirmation).trim());
     wrap = missingLine(missing);
     if (wrap) body.appendChild(wrap);
   }
@@ -237,14 +235,15 @@
       return;
     }
     wrap = field(body, "lesson", "Lesson");
-    link = el("a", "day-study dx-btn dx-btn--ghost", "Study");
+    link = el("a", "day-study dx-btn dx-btn--ghost", "Study this in Wiki flashcards");
     link.href = STUDY;
+    link.setAttribute("data-focus", "day:study");
     wrap.appendChild(link);
     if (lesson) addCopy(wrap, lesson);
     if (better) {
       older = el("div", "day-field");
       older.setAttribute("data-field", "better");
-      addLabel(older, "How today could have been better");
+      addLabel(older, "What I would change");
       addCopy(older, better);
       wrap.appendChild(older);
     }
@@ -253,7 +252,7 @@
   function mountEvening(parent, key, fields) {
     var mood = JournalData.moodOf(key);
     var energy = JournalData.energyOf(key);
-    var body = section(parent, "evening", "Evening", eveningSummary(mood, energy, winCount(fields)));
+    var body = section(parent, "day:evening", "Evening", eveningSummary(mood, energy, fields));
     var missing = [];
     var tomorrow = textLines(fields.tomorrow, 3);
     if (!validScore(mood)) mood = null;
@@ -267,8 +266,8 @@
     mountWins(body, fields, missing);
     mountLesson(body, fields, missing);
     if (filled(fields.chosenVsMomentum)) {
-      addCopy(field(body, "chosenVsMomentum", "Chosen or autopilot", "reviews"), String(fields.chosenVsMomentum).trim());
-    } else missing.push("chosen or autopilot");
+      addCopy(field(body, "chosenVsMomentum", "Choice or autopilot", "reviews"), String(fields.chosenVsMomentum).trim());
+    } else missing.push("choice or autopilot");
     if (tomorrow.length) addList(field(body, "tomorrow", "Tomorrow"), tomorrow, true);
     else missing.push("tomorrow");
     var line = missingLine(missing);
@@ -319,6 +318,7 @@
       button = el("button", "day-add dx-btn dx-btn--ghost", "Add to today");
       button.type = "button";
       button.setAttribute("aria-label", "Add to today: " + text);
+      button.setAttribute("data-focus", "carry:" + key + ":" + i);
       button.addEventListener("click", function (label) {
         return function () {
           JournalOps.todoAdd(key, { id: newId(), text: label, done: false });
@@ -333,13 +333,13 @@
   }
 
   function mountTodos(parent, key, todos) {
-    var body = section(parent, "todos", "To-dos", todoSummary(todos));
+    var body = section(parent, "day:todos", "To-dos", todoSummary(todos));
     if (window.JournalUI && typeof JournalUI.todoList === "function") JournalUI.todoList(body, key, {});
     mountYesterday(body, key);
   }
 
   function mountApps(parent) {
-    var body = section(parent, "other-apps", "Other apps", "Other apps \u00b7 Health, Study, Thesis");
+    var body = section(parent, "day:apps", "Other apps", "Other apps \u00b7 Health, Study, Thesis");
     var list = el("ul", "day-apps");
     var i;
     var item;
@@ -372,19 +372,9 @@
     root.appendChild(view);
   }
 
-  function bindOps() {
-    if (watch.bound || !window.JournalOps || typeof JournalOps.onChange !== "function") return;
-    watch.bound = true;
-    JournalOps.onChange(function () {
-      if (watch.fn) watch.fn();
-    });
-  }
-
   JournalViews.day = function (root, opts) {
     var key = opts && opts.key;
     if (!root || !key) return;
-    watch.fn = function () { paint(root, key); };
-    bindOps();
     paint(root, key);
   };
 })();

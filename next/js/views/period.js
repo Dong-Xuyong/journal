@@ -137,7 +137,7 @@
     var mood = metric("mood", roll.mood, prev && prev.mood);
     var energy = metric("energy", roll.energy, prev && prev.energy);
     var parts = ["At a glance"];
-    if (!mood && !energy) return "At a glance \u00b7 No check-ins yet";
+    if (!mood && !energy) return "At a glance \u00b7 no check-ins yet";
     if (mood) parts.push(mood);
     if (energy) parts.push(energy);
     return parts.join(" \u00b7 ");
@@ -168,6 +168,18 @@
     if (kind === "month") return "weeks";
     if (kind === "quarter") return "months";
     return "quarters";
+  }
+
+  function childHeading(kind) {
+    var word = childNoun(kind);
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+
+  function loggedKids(kids) {
+    var n = 0;
+    var i;
+    for (i = 0; i < kids.length; i++) if (kids[i].roll && kids[i].roll.logged) n += 1;
+    return n;
   }
 
   function childTitle(key) {
@@ -227,15 +239,18 @@
   }
 
   function sectionSummary(title, specs, fields) {
-    var names = [];
     var i;
+    var lines;
     for (i = 0; i < specs.length; i++) {
-      if (hasLines(specs[i], fields)) names.push(specs[i].short);
+      lines = linesOf(specs[i], fields[specs[i].key]);
+      if (lines.length) return JournalUI.oneLine([title, JournalUI.clip(lines[0], 40)]);
     }
-    if (!names.length) return title + " \u00b7 not written yet";
-    if (names.length === 1) return title + " \u00b7 " + names[0];
-    if (names.length === 2) return title + " \u00b7 " + names[0] + " and " + names[1];
-    return title + " \u00b7 " + names.slice(0, names.length - 1).join(", ") + ", and " + names[names.length - 1];
+    return title + " \u00b7 nothing yet";
+  }
+
+  function foldId(kind, name) {
+    if (name === "plan") return kind + (kind === "quarter" ? ":focus" : kind === "year" ? ":vision" : ":planning");
+    return kind + ":" + name;
   }
 
   function addFold(parent, opts) {
@@ -300,7 +315,7 @@
   function renderSection(view, kind, name, title, fields) {
     var specs = SPECS[kind][name];
     var fold = addFold(view, {
-      id: kind + "-" + name,
+      id: foldId(kind, name),
       title: title,
       level: 3,
       summary: sectionSummary(title, specs, fields)
@@ -323,9 +338,9 @@
     var items = textTodos(todos);
     var done = 0;
     var i;
-    if (!items.length) return prefix + " \u00b7 no to-dos";
+    if (!items.length) return prefix + " \u00b7 none yet";
     for (i = 0; i < items.length; i++) if (items[i].done) done += 1;
-    return prefix + " \u00b7 " + done + " of " + items.length + " done";
+    return prefix + " \u00b7 " + (items.length - done) + " left";
   }
 
   function habitPhrase(roll) {
@@ -359,19 +374,19 @@
       var score = scoreOf(goals[GOAL_ORDER[i].id]);
       if (score) parts.push(GOAL_ORDER[i].id + " " + score + "/5");
     }
-    if (!parts.length) return "Goals \u00b7 none scored";
+    if (!parts.length) return "Goals \u00b7 no score yet";
     return "Goals \u00b7 " + parts.join(" \u00b7 ");
   }
 
   function choicesSummary(fields) {
-    if (String(fields.difficulty == null ? "" : fields.difficulty).trim()) return "Difficulty and choices \u00b7 written";
-    if (String(fields.audit == null ? "" : fields.audit).trim()) return "Difficulty and choices \u00b7 choice noted";
-    return "Difficulty and choices \u00b7 not written yet";
+    var text = String(fields.difficulty == null ? "" : fields.difficulty).trim() || String(fields.audit == null ? "" : fields.audit).trim();
+    if (text) return JournalUI.oneLine(["Difficulty and choices", JournalUI.clip(text, 40)]);
+    return "Difficulty and choices \u00b7 nothing yet";
   }
 
   function renderGlance(view, kind, roll, prev, kids) {
     var fold = addFold(view, {
-      id: kind + "-glance",
+      id: kind + ":mood",
       title: "At a glance",
       level: 3,
       summary: glanceSummary(roll, prev)
@@ -394,22 +409,23 @@
       JournalTrends.mount(fold.body, {
         points: points,
         label: chartSentence(roll),
-        foldId: kind + "-data"
+        foldId: kind + ":data"
       });
     }
   }
 
   function renderChildren(view, kind, kids) {
     var fold = addFold(view, {
-      id: kind + "-children",
-      title: "Children",
+      id: kind + ":children",
+      title: childHeading(kind),
       level: 3,
-      summary: "Children \u00b7 " + kids.length + " " + childNoun(kind)
+      summary: childHeading(kind) + " \u00b7 " + loggedKids(kids) + " of " + kids.length + " with check-ins"
     });
     var i;
     for (i = 0; i < kids.length; i++) {
       var link = el("a", "period-child", childSentence(kids[i].key, kids[i].roll));
       link.href = "#" + JournalData.kindOf(kids[i].key) + "/" + kids[i].key;
+      link.setAttribute("data-focus", "child:" + kids[i].key);
       fold.body.appendChild(link);
     }
   }
@@ -417,7 +433,7 @@
   function renderGoals(view, kind, fields) {
     var goals = goalMap(fields.goals);
     var fold = addFold(view, {
-      id: kind + "-goals",
+      id: kind + ":goals",
       title: "Goals",
       level: 3,
       summary: goalsSummary(goals)
@@ -442,7 +458,7 @@
         fold.body.appendChild(block);
       }
       if (item.href) {
-        var link = el("a", "period-app", item.label);
+        var link = el("a", "period-app", "Open " + item.label);
         link.href = item.href;
         fold.body.appendChild(link);
       }
@@ -452,7 +468,7 @@
 
   function renderChoices(view, kind, fields) {
     var fold = addFold(view, {
-      id: kind + "-choices",
+      id: kind + ":choices",
       title: "Difficulty and choices",
       level: 3,
       summary: choicesSummary(fields)
@@ -466,13 +482,14 @@
   function renderHabits(view, kind, roll) {
     var phrase = habitPhrase(roll);
     var fold = addFold(view, {
-      id: kind + "-habits",
+      id: kind + ":habits",
       title: "Habits",
       level: 3,
       summary: "Habits \u00b7 " + phrase
     });
     var link = el("a", "period-habit", "Habits, " + countText(roll.logged) + " days with check-ins, " + phrase);
     link.href = "#habits";
+    link.setAttribute("data-focus", "habits-link");
     fold.body.appendChild(link);
   }
 
@@ -495,9 +512,9 @@
   function renderPrev(view, kind, key) {
     var prev = JournalData.shift(key, -1);
     var items = prev ? JournalData.todos(prev) : [];
-    var label = "Last " + noun(kind);
+    var label = "Last " + noun(kind) + "'s to-dos";
     var fold = addFold(view, {
-      id: kind + "-prev-todos",
+      id: kind + ":last-todos",
       title: label,
       level: 3,
       summary: todoSummary(label, items)
@@ -509,7 +526,7 @@
     var items = JournalData.todos(key);
     var title = asGoals ? "Goals" : "To-dos";
     var fold = addFold(view, {
-      id: kind + (asGoals ? "-goal-todos" : "-todos"),
+      id: kind + (asGoals ? ":goals" : ":todos"),
       title: title,
       level: 3,
       summary: todoSummary(title, items)
@@ -520,14 +537,8 @@
   }
 
   function renderReflect(view, key) {
-    var fold = addFold(view, {
-      id: "year-reflect",
-      title: "Reflection",
-      level: 3,
-      summary: "Reflection \u00b7 year digest"
-    });
     var slot = el("div", "period-reflect");
-    fold.body.appendChild(slot);
+    view.appendChild(slot);
     if (window.JournalReflect && typeof JournalReflect.mount === "function") {
       JournalReflect.mount(slot, { mode: "year", year: key });
     }

@@ -38,67 +38,67 @@
       twentyOne: {
         video: "habits",
         concept: "21-day habit system",
-        text: "6 habits a day, expect 4\u20135; missing some is built in. No making up missed habits the next day. Days 22\u201328 are a test automaticity week."
+        text: "Aim for 4 or 5 habits a day, and don't make up a miss tomorrow."
       },
       effort: {
         video: "dopamine",
         concept: "dopamine-from-effort",
-        text: "Learn to spike your dopamine from effort itself."
+        text: "Let the good feeling come from the effort itself."
       },
       intermittent: {
         video: "dopamine",
         concept: "intermittent-dopamine-schedules",
-        text: "avoid predictable every-third-time rules; randomness matters"
+        text: "A surprise reward works better than one you can count on."
       },
       milestones: {
         video: "habits",
         concept: "21-day habit system",
-        text: "The 21-day mark is the 21-day habit system. The 66-day mark is habit formation average ~66 days, range 18\u2013254, Lally."
+        text: "The 21-day and 66-day marks are the usual checks for a new habit."
       },
       linchpin: {
         video: "habits",
         concept: "linchpin-habits",
-        text: ""
+        text: "These habits make the other ones easier."
       },
       identity: {
         video: "habits",
         concept: "goal-based vs identity-based habits",
-        text: ""
+        text: "Act like the kind of person you want to be."
       },
       moderate: {
         video: "goals",
         concept: "moderate-difficulty-goals",
-        text: ""
+        text: "If it is too easy or too hard, change it."
       },
       gratitude: {
         video: "contiMental",
         concept: "agency-and-gratitude",
-        text: "Agency and gratitude are the two pillars of a healthy self."
+        text: "Being glad for something is part of a healthy mind."
       },
       feelings: {
         video: "brackett",
         concept: "granular-emotion-labeling",
-        text: "Labeling drives choosing the right strategy."
+        text: "Naming the feeling helps you decide what to do."
       },
       reviews: {
         video: "contiTools",
         concept: "examined-life-choice-audit",
-        text: "Ask how much is chosen versus habit or momentum."
+        text: "Notice what you chose and what you did on autopilot."
       },
       failure: {
         video: "goals",
         concept: "visualize-failure-goal-pursuit",
-        text: "Nearly doubles goal attainment."
+        text: "Seeing what you lose if you skip it makes you more likely to do it."
       },
       obstacle: {
         video: "balcetis",
         concept: "obstacle-planning-goal-pursuit",
-        text: ""
+        text: "Name what could stop you, then decide what you will do."
       },
       habitCycle: {
         video: "habits",
         concept: "twenty-one-day-habit-system",
-        text: ""
+        text: "Build the habit for 21 days, then see if it sticks."
       }
     }
   };
