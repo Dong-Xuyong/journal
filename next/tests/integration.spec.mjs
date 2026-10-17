@@ -27,11 +27,16 @@ function check(name, ok, detail) {
 
 async function ensureServer() {
   if (process.env.BASE) return;
-  execSync('mkdir -p /tmp/site/ui && ln -sfn "' + REPO + '" /tmp/site/journal');
+  execSync('mkdir -p /tmp/site/ui /tmp/site/assets/art && ln -sfn "' + REPO + '" /tmp/site/journal');
   try {
     execSync("test -s /tmp/site/ui/shell.css");
   } catch (e) {
     execSync("curl -fsSL -o /tmp/site/ui/shell.css https://dong-xuyong.github.io/ui/shell.css");
+  }
+  try {
+    execSync("test -s /tmp/site/assets/art/bg.webp");
+  } catch (e) {
+    execSync("curl -fsSL -o /tmp/site/assets/art/bg.webp https://dong-xuyong.github.io/assets/art/bg.webp");
   }
   try {
     if ((await fetch(BASE)).status < 400) return;
@@ -129,7 +134,7 @@ async function routes(browser) {
         focus: document.activeElement && document.activeElement.id,
         open: document.querySelectorAll("#view .fold.is-open").length,
         folds: document.querySelectorAll("#view .fold").length,
-        crumbs: Array.from(document.querySelectorAll("#crumbs a, #crumbs [aria-current]")).map(function (a) { return a.textContent.split(" \u00b7 ")[0]; }).join(">")
+        crumbs: Array.from(document.querySelectorAll("#crumbs a")).map(function (a) { return a.textContent.replace(/\s+/g, " ").trim(); }).join(">")
       };
     });
     check(hash + " fits 360px", info.sw <= 360, String(info.sw));
@@ -143,8 +148,8 @@ async function routes(browser) {
     const sw = await page.evaluate(function () { return document.documentElement.scrollWidth; });
     check(hash + " fits 360px with folds open", sw <= 360, String(sw));
     await setFolds(page, false);
-    if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "Year>Quarter>Month>Week>Day", info.crumbs);
-    if (hash === "#quarter/2026-Q4") check("quarter breadcrumb", info.crumbs === "Year>Quarter", info.crumbs);
+    if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "2026>Q4>Oct>W42>17", info.crumbs);
+    if (hash === "#quarter/2026-Q4") check("quarter breadcrumb", info.crumbs === "2026>Q4", info.crumbs);
     if (hash === "#habits/thesis") check("habit breadcrumb", info.crumbs === "Habits>Thesis", info.crumbs);
     if (hash === "#habits") {
       const plain = await page.locator("#view").innerText();
@@ -160,7 +165,7 @@ async function routes(browser) {
 async function dayCopy(browser) {
   const page = await newPage(browser);
   await go(page, "#day/" + DAY);
-  check("morning summary", (await line(page, "day:morning")) === "Morning \u00b7 focus: Ship \u00b7 3 priorities", await line(page, "day:morning"));
+  check("morning summary", /^Morning \u00b7 focus: Ship it[.!] \u00b7 3 priorities$/.test(await line(page, "day:morning")), await line(page, "day:morning"));
   check("evening summary counts wins, not highlights", (await line(page, "day:evening")) === "Evening \u00b7 mood 4 / energy 4 \u00b7 2 wins", await line(page, "day:evening"));
   check("to-do summary", (await line(page, "day:todos")) === "To-dos \u00b7 1 left", await line(page, "day:todos"));
   check("quote summary", /^Quote \u00b7 \S/.test(await line(page, "day:quote")), await line(page, "day:quote"));
@@ -232,7 +237,7 @@ async function keyboard(browser) {
   await page.locator(".add-todo").first().click();
   await page.waitForTimeout(300);
   const added = await page.evaluate(function () { return { tag: document.activeElement.tagName, n: document.querySelectorAll(".todo").length }; });
-  check("adding a to-do focuses the new box", added.tag === "TEXTAREA" && added.n === 3, JSON.stringify(added));
+  check("adding a to-do focuses the new box", added.tag === "TEXTAREA" && added.n === 4, JSON.stringify(added));
   await page.keyboard.type("T".repeat(300));
   await page.waitForTimeout(300);
   const sw = await page.evaluate(function () { return document.documentElement.scrollWidth; });

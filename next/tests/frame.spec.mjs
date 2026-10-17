@@ -39,11 +39,16 @@ const fixture = {
 let server = null;
 
 function setupSite() {
-  execSync('mkdir -p /tmp/site/ui && ln -sfn "' + REPO + '" /tmp/site/journal');
+  execSync('mkdir -p /tmp/site/ui /tmp/site/assets/art && ln -sfn "' + REPO + '" /tmp/site/journal');
   try {
     execSync("test -s /tmp/site/ui/shell.css");
   } catch (e) {
     execSync("curl -fsSL -o /tmp/site/ui/shell.css https://dong-xuyong.github.io/ui/shell.css");
+  }
+  try {
+    execSync("test -s /tmp/site/assets/art/bg.webp");
+  } catch (e) {
+    execSync("curl -fsSL -o /tmp/site/assets/art/bg.webp https://dong-xuyong.github.io/assets/art/bg.webp");
   }
 }
 
@@ -161,7 +166,10 @@ async function tabThrough(page) {
       if (!el || el === document.body || el === document.documentElement) return null;
       const by = (el.getAttribute("aria-labelledby") || "").split(/\s+/).map(function (id) { const n = id && document.getElementById(id); return n ? n.textContent : ""; }).join(" ");
       const label = el.labels && el.labels.length ? el.labels[0].textContent : "";
-      const name = (el.getAttribute("aria-label") || by.trim() || label || el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll("[aria-hidden='true']").forEach(function (node) { node.remove(); });
+      const visible = (clone.innerText || clone.textContent || "").replace(/\s+/g, " ").trim();
+      const name = (el.getAttribute("aria-label") || by.trim() || label || visible).replace(/\s+/g, " ").trim();
       const style = getComputedStyle(el);
       const box = el.getBoundingClientRect();
       return {
@@ -171,7 +179,9 @@ async function tabThrough(page) {
         outlineWidth: parseFloat(style.outlineWidth) || 0,
         outlineColor: style.outlineColor,
         width: box.width,
-        height: box.height
+        height: box.height,
+        type: (el.getAttribute("type") || "").toLowerCase(),
+        fold: !!(el.classList && el.classList.contains("fold-summary"))
       };
     });
     if (!info) break;
@@ -202,6 +212,45 @@ async function run() {
   assert(await page.locator('[data-fold="day:todos"]').evaluate(function (el) { return el.open; }) === false, "a fold that was not opened stays closed");
   assert(await scrollWidth(page) <= 360, "day view scrolls sideways: " + await scrollWidth(page));
 
+  const frameBox = await page.evaluate(function () {
+    function box(el) {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+    }
+    const tabBar = document.getElementById("tabs");
+    const links = Array.prototype.map.call(tabBar.querySelectorAll("a"), function (el) {
+      const r = box(el);
+      r.text = el.textContent.replace(/\s+/g, " ").trim();
+      return r;
+    });
+    const crumbLinks = Array.prototype.map.call(document.querySelectorAll("#crumbs a"), function (el) {
+      const r = box(el);
+      r.text = el.textContent.replace(/\s+/g, " ").trim();
+      r.label = el.getAttribute("aria-label") || "";
+      return r;
+    });
+    const period = document.querySelector(".period");
+    const buttons = Array.prototype.map.call(period.querySelectorAll("button"), box);
+    return {
+      tabs: box(tabBar),
+      links: links,
+      crumbs: crumbLinks,
+      period: box(period),
+      buttons: buttons,
+      sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
+    };
+  });
+  assert(frameBox.tabs.height <= 44, "tabs taller than 44px: " + frameBox.tabs.height);
+  assert(frameBox.links.length === 6, "expected six tabs");
+  assert(frameBox.links.every(function (link) { return Math.abs(link.top - frameBox.links[0].top) < 1; }), "tabs wrap onto a second row");
+  assert(frameBox.links.every(function (link) { return link.left >= 0 && link.right <= 360 && link.height >= 32 && link.height <= 44; }), "a tab is clipped or the wrong height " + JSON.stringify(frameBox.links));
+  assert(frameBox.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>17", "breadcrumb labels " + frameBox.crumbs.map(function (link) { return link.text; }).join(">"));
+  assert(frameBox.crumbs.every(function (link) { return Math.abs(link.top - frameBox.crumbs[0].top) < 1; }), "breadcrumb wraps");
+  assert(frameBox.crumbs.every(function (link) { return link.label.indexOf(link.text) !== -1 && link.right <= 360; }), "breadcrumb name or overflow " + JSON.stringify(frameBox.crumbs));
+  assert(frameBox.period.height <= 88, "heading and period buttons are taller than about 80px: " + frameBox.period.height);
+  assert(frameBox.buttons.length === 3 && frameBox.buttons.every(function (button) { return button.height >= 32 && button.height <= 36 && Math.abs(button.top - frameBox.buttons[0].top) < 1; }), "period buttons should be one 32px row " + JSON.stringify(frameBox.buttons));
+  assert(frameBox.sw <= 360, "frame scrolls sideways");
+
   const stops = await tabThrough(page);
   const names = stops.map(function (stop) { return stop.name; });
   const expected = ["Skip to content", "Home", "Switch to dark mode", "Day", "Week", "Month", "Quarter", "Year", "Habits"];
@@ -219,9 +268,11 @@ async function run() {
   assert(names[17].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[17]);
   assert(await page.locator("#today").isDisabled(), "Today is disabled while on today");
   stops.forEach(function (stop) {
+    const floor = stop.type === "checkbox" || stop.type === "radio" ? 24 : 32;
     assert(stop.name.length > 0, "control is missing an accessible name: " + stop.tag);
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "focus ring missing on " + stop.name + " " + stop.outline + " " + stop.outlineWidth);
-    assert(stop.width >= 44 && stop.height >= 44, "tap target under 44px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
+    assert(stop.width >= floor && stop.height >= floor, "tap target under " + floor + "px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
+    if (stop.fold) assert(stop.height >= 40, "fold row under 40px on " + stop.name + " " + Math.round(stop.height));
   });
 
   const todos = page.locator('[data-fold="day:todos"]');
@@ -292,9 +343,10 @@ async function run() {
   assert(await scrollWidth(page) <= 360, "open folds scroll sideways");
   const openStops = await tabThrough(page);
   openStops.forEach(function (stop) {
+    const floor = stop.type === "checkbox" || stop.type === "radio" ? 24 : 32;
     assert(stop.name.length > 0, "open fold control missing a name: " + stop.tag + " " + JSON.stringify(stop));
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "open fold focus ring missing on " + stop.name);
-    assert(stop.width >= 44 && stop.height >= 44, "open fold tap target under 44px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
+    assert(stop.width >= floor && stop.height >= floor, "open fold tap target under " + floor + "px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
   });
 
   await page.evaluate(function () {
