@@ -69,15 +69,24 @@
   }
 
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   function shortKey(key) {
     var kind = Data.kindOf(key);
     var value = String(key || "");
+    var year;
+    var month;
+    var day;
     if (kind === "year") return value;
     if (kind === "quarter") return "Q" + value.slice(6);
     if (kind === "month") return MONTHS_SHORT[Number(value.slice(5, 7)) - 1] || value;
     if (kind === "week") return "W" + Number(value.slice(6));
-    if (kind === "day") return String(Number(value.slice(8, 10)));
+    if (kind === "day") {
+      year = Number(value.slice(0, 4));
+      month = Number(value.slice(5, 7));
+      day = Number(value.slice(8, 10));
+      return WEEKDAYS_SHORT[new Date(Date.UTC(year, month - 1, day)).getUTCDay()] + " " + day;
+    }
     return value;
   }
 
@@ -137,6 +146,13 @@
       if (kind === route.kind) link.setAttribute("aria-current", "page");
       tabs.appendChild(link);
     });
+    var current = tabs.querySelector("[aria-current='page']");
+    if (current) {
+      if (current.offsetLeft < tabs.scrollLeft) tabs.scrollLeft = Math.max(0, current.offsetLeft - 8);
+      else if (current.offsetLeft + current.offsetWidth > tabs.scrollLeft + tabs.clientWidth) {
+        tabs.scrollLeft = current.offsetLeft + current.offsetWidth - tabs.clientWidth + 8;
+      }
+    }
   }
 
   function habitLabel(id) {
@@ -185,8 +201,12 @@
     today.hidden = !show;
     nextBtn.hidden = !show;
     if (!show) return;
-    prev.textContent = "Previous " + word;
-    nextBtn.textContent = "Next " + word;
+    prev.textContent = "Prev";
+    nextBtn.textContent = "Next";
+    today.textContent = "Today";
+    prev.setAttribute("aria-label", "Prev " + word);
+    nextBtn.setAttribute("aria-label", "Next " + word);
+    today.removeAttribute("aria-label");
     today.disabled = route.key === Data.todayKey(route.kind);
   }
 

@@ -148,7 +148,7 @@ async function routes(browser) {
     const sw = await page.evaluate(function () { return document.documentElement.scrollWidth; });
     check(hash + " fits 360px with folds open", sw <= 360, String(sw));
     await setFolds(page, false);
-    if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "2026>Q4>Oct>W42>17", info.crumbs);
+    if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "2026>Q4>Oct>W42>Sat 17", info.crumbs);
     if (hash === "#quarter/2026-Q4") check("quarter breadcrumb", info.crumbs === "2026>Q4", info.crumbs);
     if (hash === "#habits/thesis") check("habit breadcrumb", info.crumbs === "Habits>Thesis", info.crumbs);
     if (hash === "#habits") {

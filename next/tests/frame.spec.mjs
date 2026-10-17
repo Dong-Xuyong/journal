@@ -231,24 +231,33 @@ async function run() {
     });
     const period = document.querySelector(".period");
     const buttons = Array.prototype.map.call(period.querySelectorAll("button"), box);
+    const heading = box(document.getElementById("period-heading"));
+    const tabStyle = getComputedStyle(tabBar.querySelector("a"));
+    const crumbStyle = getComputedStyle(document.querySelector("#crumbs a"));
     return {
       tabs: box(tabBar),
       links: links,
       crumbs: crumbLinks,
       period: box(period),
+      heading: heading,
       buttons: buttons,
+      tabDecoration: tabStyle.textDecorationLine,
+      crumbDecoration: crumbStyle.textDecorationLine,
       sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
     };
   });
-  assert(frameBox.tabs.height <= 44, "tabs taller than 44px: " + frameBox.tabs.height);
+  assert(frameBox.tabs.height <= 40, "tabs taller than 40px: " + frameBox.tabs.height);
+  assert(frameBox.tabs.right <= 360, "tab bar overflows the page: " + frameBox.tabs.right);
   assert(frameBox.links.length === 6, "expected six tabs");
   assert(frameBox.links.every(function (link) { return Math.abs(link.top - frameBox.links[0].top) < 1; }), "tabs wrap onto a second row");
-  assert(frameBox.links.every(function (link) { return link.left >= 0 && link.right <= 360 && link.height >= 32 && link.height <= 44; }), "a tab is clipped or the wrong height " + JSON.stringify(frameBox.links));
-  assert(frameBox.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>17", "breadcrumb labels " + frameBox.crumbs.map(function (link) { return link.text; }).join(">"));
+  assert(frameBox.links.every(function (link) { return link.height >= 32 && link.height <= 40; }), "a tab is the wrong height " + JSON.stringify(frameBox.links));
+  assert(frameBox.tabDecoration === "none" && frameBox.crumbDecoration === "none", "tabs or breadcrumbs are underlined");
+  assert(frameBox.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>Sat 17", "breadcrumb labels " + frameBox.crumbs.map(function (link) { return link.text; }).join(">"));
   assert(frameBox.crumbs.every(function (link) { return Math.abs(link.top - frameBox.crumbs[0].top) < 1; }), "breadcrumb wraps");
   assert(frameBox.crumbs.every(function (link) { return link.label.indexOf(link.text) !== -1 && link.right <= 360; }), "breadcrumb name or overflow " + JSON.stringify(frameBox.crumbs));
-  assert(frameBox.period.height <= 88, "heading and period buttons are taller than about 80px: " + frameBox.period.height);
+  assert(frameBox.period.height <= 56, "date row is taller than one line: " + frameBox.period.height);
   assert(frameBox.buttons.length === 3 && frameBox.buttons.every(function (button) { return button.height >= 32 && button.height <= 36 && Math.abs(button.top - frameBox.buttons[0].top) < 1; }), "period buttons should be one 32px row " + JSON.stringify(frameBox.buttons));
+  assert(Math.abs((frameBox.heading.top + frameBox.heading.bottom) / 2 - (frameBox.buttons[0].top + frameBox.buttons[0].bottom) / 2) < 4, "date heading and buttons are not on one row");
   assert(frameBox.sw <= 360, "frame scrolls sideways");
 
   const stops = await tabThrough(page);
@@ -262,7 +271,7 @@ async function run() {
   assert(names[11].indexOf("Month") === 0, "breadcrumb month, got " + names[11]);
   assert(names[12].indexOf("Week") === 0, "breadcrumb week, got " + names[12]);
   assert(names[13].indexOf("Day") === 0, "breadcrumb day, got " + names[13]);
-  assert(names[14] === "Previous day", "previous control, got " + names[14]);
+  assert(names[14] === "Prev day", "previous control, got " + names[14]);
   assert(names[15] === "Next day", "next control (Today is disabled on today), got " + names[15]);
   assert(names[16].indexOf("Quote") === 0, "quote fold follows next, got " + names[16]);
   assert(names[17].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[17]);
