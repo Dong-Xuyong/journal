@@ -28,91 +28,13 @@
 
 .habit-view .habit-note,
 .habit-view .heat-detail,
-.habit-view .trend-tip,
-.habit-view .identity,
-.habit-view .xp-today {
+.habit-view .trend-tip {
   margin: 8px 0;
   overflow-wrap: anywhere;
   font-size: 0.9rem;
   line-height: 1.4;
   color: var(--dx-text);
 }
-
-.habit-view .cite-row,
-.habit-view .mech,
-.habit-view .linchpin-mark,
-.habit-view .surprise-row,
-.habit-view .level-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.habit-view .level-row {
-  justify-content: space-between;
-  margin-top: 8px;
-}
-
-.habit-view .level-row b { font-size: 1.25rem; }
-
-.habit-view .info-btn {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid var(--dx-border);
-  background: var(--dx-card-solid);
-  color: var(--dx-text);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.habit-view .info-wrap { position: relative; display: inline-flex; max-width: 100%; }
-
-.habit-view .info-tip {
-  display: block;
-  max-width: 100%;
-  margin-top: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--dx-border);
-  border-radius: 12px;
-  background: var(--dx-card-solid);
-  color: var(--dx-text);
-  overflow-wrap: anywhere;
-}
-
-.habit-view .info-tip[hidden] { display: none !important; }
-
-.habit-view .play-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  max-width: 100%;
-}
-
-.habit-view .play-copy { flex: 1 1 160px; min-width: 0; }
-
-.habit-view .day-ring {
-  width: 88px;
-  height: 88px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: conic-gradient(var(--dx-accent) calc(var(--p) * 1%), var(--dx-card-solid) 0);
-  box-shadow: inset 0 0 0 1px var(--dx-border);
-}
-
-.habit-view .day-ring-num { font-weight: 700; }
-.habit-view .day-ring-num strong { font-size: 1.4rem; }
-.habit-view .play-status { margin: 0; font-weight: 700; }
-.habit-view .play-streak,
-.habit-view .cycle-label { margin: 2px 0 0; }
 
 .habit-view .rate-bar {
   display: block;
@@ -131,17 +53,6 @@
   height: 100%;
   width: var(--v, 0%);
   background: var(--dx-accent);
-}
-
-.habit-view .surprise-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--dx-accent);
-  color: var(--dx-accent-fg);
-  font-weight: 700;
 }
 
 .habit-view .habit-grid {
@@ -163,8 +74,6 @@
 .habit-view .habit-tile.on {
   box-shadow: inset 0 0 0 3px var(--dx-text);
 }
-
-.habit-view .habit-tile.linchpin { border-left: 4px solid var(--dx-text); }
 
 .habit-view .habit-open {
   display: flex;
@@ -189,6 +98,25 @@
 .habit-view .habit-streak { font-size: 1.6rem; font-weight: 700; line-height: 1; }
 .habit-view .habit-streak-lbl,
 .habit-view .best { font-size: 0.85rem; }
+
+.habit-view .today-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.habit-view .today-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--dx-border);
+}
+
+.habit-view .today-item:last-child { border-bottom: 0; }
+.habit-view .today-name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.habit-view .today-item .today-pill { margin-top: 0; }
 
 .habit-view .today-pill {
   display: inline-flex;
@@ -219,29 +147,6 @@
   overflow-wrap: anywhere;
   text-decoration: underline;
 }
-
-.habit-view .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-
-.habit-view .badge {
-  min-width: 28px;
-  padding: 2px 6px;
-  border: 1px dashed var(--dx-text);
-  border-radius: 999px;
-  color: var(--dx-text);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-align: center;
-}
-
-.habit-view .badge.on {
-  border-style: solid;
-  background: var(--dx-accent);
-  color: var(--dx-accent-fg);
-}
-
-.habit-view .nudge { margin: 8px 0 0; font-weight: 700; overflow-wrap: anywhere; }
-.habit-view .nudge.raise { color: #1d4ed8; }
-.habit-view .nudge.ease { color: #9a3412; }
 
 .habit-view .habit-chips,
 .habit-view .trend-stops,
@@ -484,8 +389,6 @@ html.dark .habit-view .rate-bar.s6 i { fill: #f9a8d4; background: #f9a8d4; }
 html.dark .habit-view .hcell.done { background: #4ade80; color: #052e16; }
 html.dark .habit-view .hcell.miss { color: #fecdd3; box-shadow: inset 0 0 0 2px #fecdd3; }
 html.dark .habit-view .today-pill.miss { color: #fecdd3; border-color: #fecdd3; }
-html.dark .habit-view .nudge.raise { color: #93c5fd; }
-html.dark .habit-view .nudge.ease { color: #fdba74; }
 html.dark .habit-view .hcell.lv0,
 html.dark .habit-view .hcell.lv1,
 html.dark .habit-view .hcell.lv2 { color: #0d0b08; }

@@ -6,7 +6,7 @@ Builder 1 notes for `next/js/data.js` and `next/js/ops.js`. The file shape in `C
 
 Morning, evening, week, and month fields stay Grok-written. There is no operation that edits `fields`. A save can change a to-do or append a reflection answer. It sets `updatedAt` only on an entry whose to-dos it actually changed.
 
-XP, levels, and surprise rolls stay on the Habits tab. This layer never writes `habitDefs`, `habits`, or `habitStreaks`. Those keys are copied through from the file that was just fetched.
+The Habits tab shows plain tracking only (no XP, levels or surprise rolls; Dong, Oct 17 2026). This layer never writes `habitDefs`, `habits`, or `habitStreaks`. Those keys are copied through from the file that was just fetched.
 
 ## localStorage
 
