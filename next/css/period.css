@@ -35,8 +35,7 @@ html.dark .period-view,
   max-width: 100%;
 }
 
-.period-view .fold-body,
-.period-view .period-fold > div {
+.period-view .period-fold > .fold-panel {
   padding: 0 12px 12px;
 }
 
@@ -99,7 +98,7 @@ html.dark .period-view,
   min-width: 44px;
 }
 
-.period-view button {
+.period-view button:not(.fold-summary) {
   padding: 8px 12px;
   border: 1px solid var(--dx-border, #c8c4ba);
   border-radius: 10px;
