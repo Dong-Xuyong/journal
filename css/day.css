@@ -18,7 +18,6 @@
   min-width: 0;
 }
 
-.day-quote,
 .day-fold {
   max-width: 100%;
   background: var(--dx-card-solid);
@@ -38,19 +37,6 @@
 
 .day-view .day-fold:not(.is-open) .fold-line {
   flex: 1 1 auto;
-}
-
-.day-quote {
-  margin: 0;
-}
-
-.day-quote blockquote {
-  margin: 0;
-  max-width: 100%;
-  font-size: 1rem;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .day-fold-body {

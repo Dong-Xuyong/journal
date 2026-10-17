@@ -182,7 +182,7 @@ async function dayCopy(browser) {
   check("morning summary", /^Morning \u00b7 focus: Ship it[.!] \u00b7 3 priorities$/.test(await line(page, "day:morning")), await line(page, "day:morning"));
   check("evening summary counts wins, not highlights", (await line(page, "day:evening")) === "Evening \u00b7 mood 4 / energy 4 \u00b7 2 wins", await line(page, "day:evening"));
   check("to-do summary", (await line(page, "day:todos")) === "To-dos \u00b7 1 left", await line(page, "day:todos"));
-  check("quote summary", /^Quote \u00b7 \S/.test(await line(page, "day:quote")), await line(page, "day:quote"));
+  check("quote is not shown", (await page.locator('[data-fold="day:quote"], .day-quote, blockquote').count()) === 0 && (await page.locator("#view").innerText()).indexOf("Keep going") === -1);
   const reflect = await page.evaluate(function () {
     const card = document.querySelector('#view [data-reflect="day"]');
     return card ? { fold: !!card.closest("details"), visible: card.getBoundingClientRect().height > 60, title: card.querySelector(".jn-card-title").textContent, q: card.querySelector(".reflect-question").textContent } : null;

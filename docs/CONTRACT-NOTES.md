@@ -8,7 +8,7 @@ The page never writes `journal.json` (Dong, Oct 17 2026). Robin edits the file; 
 
 ## Presentation
 
-Morning sub-headings, accents, the focus pill, amber time and deadline chips, and `- ` lines drawn as lists are display-only. They do not change `journal.json` or the words that were stored. Info buttons are not shown.
+Morning sub-headings, accents, the focus pill, amber time and deadline chips, and `- ` lines drawn as lists are display-only. They do not change `journal.json` or the words that were stored. Info buttons are not shown. `quotes` stays in the file and is not shown on any view.
 
 The Habits tab shows plain tracking only (no XP, levels or surprise rolls).
 
