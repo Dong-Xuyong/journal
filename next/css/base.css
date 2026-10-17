@@ -1,0 +1,507 @@
+/* Frame layout, contrast, focus, and folds for the rebuilt journal. */
+
+[hidden] {
+  display: none !important;
+}
+
+:root {
+  --jn-focus: #1d4ed8;
+  --jn-line: #4b453f;
+  --jn-text: var(--dx-text);
+  --jn-muted: #4b453f;
+}
+
+html.dark {
+  --jn-focus: #93c5fd;
+  --jn-line: #d4d4d4;
+  --jn-muted: #d4d4d4;
+}
+
+body.dx,
+body.dx *,
+body.dx *::before,
+body.dx *::after {
+  box-sizing: border-box;
+}
+
+body.dx {
+  max-width: 100%;
+}
+
+body.dx * {
+  transition: none !important;
+}
+
+body.dx,
+.dx-card,
+.crumbs,
+.dx-header,
+.dx-tabs,
+.todo textarea,
+.info-tip {
+  color: var(--dx-text);
+}
+
+.dx-header,
+.dx-tabs,
+.dx-card,
+.crumbs,
+.todo textarea,
+.info-tip,
+.skip-link:focus {
+  background-color: var(--dx-card-solid);
+}
+
+.dx-header {
+  background-color: var(--dx-bg);
+  max-width: 100%;
+}
+
+.dx-actions {
+  min-width: 0;
+}
+
+#sync-label {
+  min-width: 0;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--jn-muted);
+}
+
+.dx-header .dong-theme-toggle {
+  position: static;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  border-color: var(--jn-line);
+  color: var(--dx-text);
+  background: var(--dx-card-solid);
+}
+
+#main,
+.crumbs,
+#connect {
+  width: min(720px, calc(100% - 24px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#main {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+#main:focus {
+  outline: none;
+}
+
+.dx-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+  width: min(720px, calc(100% - 24px));
+  border-radius: 16px;
+  background: var(--dx-card-solid);
+  border-color: var(--jn-line);
+}
+
+.dx-tabs > a {
+  flex: 1 1 calc(33.33% - 4px);
+  min-width: 44px;
+  min-height: 44px;
+  white-space: normal;
+  background-color: #ffffff;
+  color: #0d0b08;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dx-tabs > a[aria-current="page"] {
+  background-color: #ffffff;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 2px #1d4ed8;
+}
+
+html.dark .dx-tabs {
+  background-color: #1f1f1f;
+  border-color: #d4d4d4;
+}
+
+html.dark .dx-tabs > a,
+html.dark .dx-tabs > a[aria-current="page"] {
+  background-color: #1f1f1f;
+  color: #efeeec;
+}
+
+html.dark .dx-tabs > a[aria-current="page"] {
+  color: #93c5fd;
+  box-shadow: inset 0 0 0 2px #93c5fd;
+}
+
+.crumbs {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 4px;
+  border: 1px solid var(--jn-line);
+  border-radius: 16px;
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.crumbs li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.crumbs li + li::before {
+  content: "\203A";
+  padding: 0 4px;
+  color: var(--jn-muted);
+  font-weight: 700;
+}
+
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 6px;
+  color: var(--dx-accent);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.period {
+  margin: 8px 0 12px;
+}
+
+#period-heading {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+#period-heading:focus {
+  outline: 3px solid var(--jn-focus);
+  outline-offset: 3px;
+}
+
+.period-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.period-nav .dx-btn {
+  flex: 1 1 30%;
+  max-width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  white-space: normal;
+}
+
+.dx-btn {
+  min-height: 44px;
+  min-width: 44px;
+  border-color: transparent;
+}
+
+.dx-btn--ghost {
+  color: var(--dx-text);
+  background: var(--dx-card-solid);
+  border-color: var(--jn-line);
+}
+
+#connect {
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+#connect[hidden] {
+  display: none;
+}
+
+#btn-connect {
+  width: 100%;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--dx-card-solid);
+  color: var(--dx-text);
+  font-weight: 700;
+  text-decoration: underline;
+  transform: translateY(-160%);
+  pointer-events: none;
+}
+
+.skip-link:focus {
+  transform: none;
+  pointer-events: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+body.dx :focus-visible {
+  outline: 3px solid var(--jn-focus);
+  outline-offset: 2px;
+}
+
+.dx-header .dong-theme-toggle:focus-visible {
+  outline: 3px solid var(--jn-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.fold {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  max-width: 100%;
+}
+
+.fold-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-summary::marker {
+  content: "";
+}
+
+.fold-summary::before {
+  content: "\203A";
+  flex: 0 0 auto;
+  width: 1em;
+  color: var(--jn-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.fold[open] > .fold-summary::before {
+  transform: rotate(90deg);
+}
+
+.fold-line {
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.fold:not([open]) > .fold-summary .fold-line {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fold-body {
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.field-line,
+.empty-line,
+.habit-note {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.field-name {
+  font-weight: 700;
+}
+
+.todo-list,
+.undo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.todo,
+.undo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0 0 8px;
+}
+
+.todo-check {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--dx-accent);
+  border: 2px solid var(--jn-line);
+  border-radius: 8px;
+}
+
+.todo textarea {
+  flex: 1 1 8rem;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 2px solid var(--jn-line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+  background: var(--dx-card-solid);
+  color: var(--dx-text);
+}
+
+.todo textarea::placeholder {
+  color: var(--jn-muted);
+  opacity: 1;
+}
+
+.todo .del,
+.info-btn,
+.undo-row button,
+.add-todo {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.add-todo {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.year-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+.year-status [role="radio"] {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 2px solid var(--jn-line);
+  border-radius: 999px;
+  background: var(--dx-card-solid);
+  color: var(--dx-text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.year-status [role="radio"][aria-checked="true"] {
+  border-color: var(--dx-accent);
+  box-shadow: inset 0 0 0 2px var(--dx-accent);
+}
+
+.info-wrap {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  margin: 0 0 8px;
+}
+
+.info-tip {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 2px solid var(--jn-line);
+  border-radius: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.undo-row {
+  align-items: center;
+}
+
+html.dark .crumbs,
+html.dark .dx-card,
+html.dark .todo textarea,
+html.dark .info-tip,
+html.dark .dx-btn--ghost,
+html.dark .info-btn,
+html.dark .year-status [role="radio"] {
+  background-color: #1f1f1f;
+  color: #efeeec;
+}
+
+html.dark .crumbs a {
+  background-color: #1f1f1f;
+  color: #93c5fd;
+}
+
+html.dark .dx-btn {
+  background-color: #60a5fa;
+  color: #0d0d0d;
+}
+
+html.dark .dx-btn--ghost {
+  background-color: #1f1f1f;
+  color: #efeeec;
+  border-color: #d4d4d4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
