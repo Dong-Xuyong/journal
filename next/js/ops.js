@@ -120,7 +120,7 @@
     var changed = false;
     var i;
     for (i = 0; i < keys.length; i++) {
-      if (keys[i] === "id") continue;
+      if (keys[i] === "id" || !safeId(keys[i])) continue;
       target[keys[i]] = op.patch[keys[i]];
       changed = true;
     }
@@ -221,7 +221,22 @@
 
   function refreshView() {
     var data = dataApi();
-    if (data && typeof data.load === "function") data.load(applyOps(base, queue));
+    var before;
+    if (!data || typeof data.load !== "function") return;
+    before = typeof data.version === "function" ? data.version() : null;
+    data.load(applyOps(base, queue));
+    if (before != null && data.version() !== before) emit();
+  }
+
+  function answerExists(qid, date, text) {
+    var doc = applyOps(base, queue);
+    var list = isRecord(doc.reflections) && isRecord(doc.reflections.answers) ? doc.reflections.answers[qid] : null;
+    var i;
+    if (!Array.isArray(list)) return false;
+    for (i = 0; i < list.length; i++) {
+      if (isRecord(list[i]) && list[i].date === date && list[i].text === text) return true;
+    }
+    return false;
   }
 
   function rememberBackup(rawText) {
@@ -425,9 +440,14 @@
   }
 
   function enqueue(op) {
-    op.seq = seq;
-    seq += 1;
-    queue.push(op);
+    var last = queue.length ? queue[queue.length - 1] : null;
+    if (!inFlight && last && op.type === "todoPatch" && last.type === "todoPatch" && last.key === op.key && last.id === op.id) {
+      Object.keys(op.patch).forEach(function (name) { last.patch[name] = op.patch[name]; });
+    } else {
+      op.seq = seq;
+      seq += 1;
+      queue.push(op);
+    }
     persistQueue();
     refreshView();
     if (inFlight) return;
@@ -463,8 +483,10 @@
   function appendAnswer(qid, answer) {
     var date = answer && typeof answer.date === "string" ? answer.date : "";
     var text = answer && typeof answer.text === "string" ? answer.text : "";
-    if (!safeId(qid) || text.trim().length === 0) return;
+    if (!safeId(qid) || text.trim().length === 0) return false;
+    if (answerExists(qid, date, text)) return false;
     enqueue({ type: "appendAnswer", qid: qid, answer: { date: date, text: text } });
+    return true;
   }
 
   function onChange(fn) {

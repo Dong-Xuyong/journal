@@ -281,8 +281,21 @@
     return days;
   }
 
+  var loads = 0;
+  var lastText = null;
+  var sleepCache = null;
+
   function load(raw) {
+    var text = JSON.stringify(isRecord(raw) ? raw : null);
+    if (text === lastText) return;
+    lastText = text;
     state = isRecord(raw) ? cloneJson(raw) : { version: 1, entries: {}, quotes: {} };
+    sleepCache = null;
+    loads += 1;
+  }
+
+  function version() {
+    return loads;
   }
 
   function entryRaw(key) {
@@ -497,7 +510,12 @@
 
   function sleepOf(day) {
     if (kindOf(day) !== "day") return null;
-    var night = journalSleepMap(state)[day];
+    if (!sleepCache) sleepCache = journalSleepMap(state);
+    var night = sleepCache[day];
+    if (!night) {
+      var bag = daysBag(day);
+      night = isRecord(bag) ? readNight(bag.sleep) : null;
+    }
     return night ? cloneJson(night) : null;
   }
 
@@ -725,6 +743,7 @@
 
   var api = {
     load: load,
+    version: version,
     entry: entry,
     fields: fields,
     todos: todos,
