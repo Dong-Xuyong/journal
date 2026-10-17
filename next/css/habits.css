@@ -19,21 +19,6 @@
   max-width: 100%;
 }
 
-.habit-view summary {
-  min-height: 44px;
-  padding: 8px 4px;
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-
-.habit-view summary h3 {
-  display: inline;
-  margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.3;
-}
-
-.habit-view summary:focus-visible,
 .habit-view button:focus-visible,
 .habit-view a:focus-visible,
 .habit-view .heat-scroll:focus-visible {

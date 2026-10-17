@@ -356,12 +356,8 @@
     open.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
     open.setAttribute("data-select", def.id);
     open.setAttribute("data-focus", "tile:" + def.id);
-    open.setAttribute("aria-label", def.label + ", " + current + " " + streakLabel + ", best " + best + ", today " + statusText(status).toLowerCase() + (selected === def.id ? ", selected" : ""));
     open.appendChild(emoji);
-    if (!BODY[def.id]) {
-      name = node("span", "habit-label", def.label);
-      open.appendChild(name);
-    }
+    open.appendChild(node("span", BODY[def.id] ? "sr-only" : "habit-label", def.label));
     open.appendChild(node("span", "habit-streak", String(current)));
     open.appendChild(node("span", "habit-streak-lbl", streakLabel));
     open.appendChild(node("span", "best", "Best " + best));
@@ -753,11 +749,13 @@
     series.forEach(function (item, index) {
       var stop = button("trend-stop");
       var value = selected ? (item.stats.perHabit[selected] || {}).rate : item.stats.overall;
-      stop.setAttribute("aria-label", describePeriod(item, defs, selected));
+      var shown = value == null ? "\u2013" : pct(value);
+      stop.setAttribute("aria-label", item.label + " " + shown + ", " + describePeriod(item, defs, selected));
       stop.setAttribute("tabindex", index === active ? "0" : "-1");
       stop.setAttribute("data-index", String(index));
       stop.appendChild(node("span", "trend-stop-label", item.label));
-      stop.appendChild(node("span", "trend-stop-pct", value == null ? "\u2013" : pct(value)));
+      stop.appendChild(document.createTextNode(" "));
+      stop.appendChild(node("span", "trend-stop-pct", shown));
       stop.addEventListener("focus", function () { show(index, false); });
       stop.addEventListener("keydown", function (event) {
         if (event.key === "ArrowRight" || event.key === "ArrowDown") {
@@ -821,12 +819,12 @@
       var fill = node("i");
       var swatch = node("span", "rate-swatch" + (id ? " s" + (index % 7) : " overall"));
       row.setAttribute("aria-pressed", pressed ? "true" : "false");
-      row.setAttribute("aria-label", label + ", " + pct(rate));
       row.setAttribute("data-select", id || "all");
       row.setAttribute("data-focus", "rate:" + kind + ":" + (id || "all"));
       swatch.setAttribute("aria-hidden", "true");
       row.appendChild(swatch);
       row.appendChild(node("span", "rate-name", label));
+      row.appendChild(document.createTextNode(" "));
       row.appendChild(node("span", "rate-num", pct(rate)));
       fill.style.setProperty("--v", rate == null ? "0%" : Math.round(rate * 100) + "%");
       bar.appendChild(fill);

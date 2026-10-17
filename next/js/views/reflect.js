@@ -1,5 +1,4 @@
-/* Reflections. Append-only answers. JournalData, JournalOps, and JournalUI
-   come from builders 1 and 2; the spec stubs those signatures. */
+/* Reflections. Append-only answers; app.js re-renders after each change. */
 (function () {
   "use strict";
 
@@ -14,9 +13,6 @@
     { id: "q8", text: "If I took a completely different path to what I'm doing right now, where might I end up five years from now?" },
     { id: "q9", text: "If I took a completely different path and did not care about money or what other people thought of me, where might I end up?" }
   ];
-
-  var mounts = [];
-  var listening = false;
 
   function apis() {
     if (!window.JournalData || !window.JournalOps || !window.JournalUI || !window.JournalUI.fold || !window.JournalUI.announce) {
@@ -210,6 +206,7 @@
       return;
     }
     window.JournalUI.announce("Answer saved.");
+    return true;
   }
 
   function editor(question, number, date, scope) {
@@ -221,6 +218,8 @@
     var note = node("p", "reflect-note");
     var fieldId = domId(scope, question.id);
     box.id = fieldId;
+    box.setAttribute("data-focus", "reflect:" + scope + ":" + question.id + ":box");
+    save.setAttribute("data-focus", "reflect:" + scope + ":" + question.id + ":save");
     box.rows = 4;
     box.setAttribute("aria-keyshortcuts", "Control+Enter Meta+Enter");
     label.setAttribute("for", fieldId);
@@ -234,7 +233,7 @@
     wrap.appendChild(label);
     wrap.appendChild(actions);
     function run() {
-      commit(question.id, box.value, date, note);
+      if (commit(question.id, box.value, date, note)) box.value = "";
     }
     save.addEventListener("click", run);
     box.addEventListener("keydown", function (event) {
@@ -353,29 +352,9 @@
   }
 
   function mount(container, options) {
-    var record = null;
-    var i;
     apis();
     ensureCss();
-    for (i = 0; i < mounts.length; i++) {
-      if (mounts[i].container === container) {
-        record = mounts[i];
-        record.options = options || {};
-        break;
-      }
-    }
-    if (!record) {
-      record = { container: container, options: options || {} };
-      mounts.push(record);
-    }
-    if (!listening) {
-      listening = true;
-      window.JournalOps.onChange(function () {
-        var n;
-        for (n = 0; n < mounts.length; n++) render(mounts[n]);
-      });
-    }
-    render(record);
+    render({ container: container, options: options || {} });
   }
 
   window.JournalReflect = { mount: mount };

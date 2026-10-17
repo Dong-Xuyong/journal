@@ -25,54 +25,6 @@ html[data-theme="dark"] .reflect-fold {
   box-shadow: none;
 }
 
-.reflect-fold > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 2px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.reflect-fold > summary::-webkit-details-marker {
-  display: none;
-}
-
-.reflect-fold > summary::before {
-  content: "";
-  flex: none;
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 6px solid var(--dx-text, #0d0b08);
-}
-
-.reflect-fold[open] > summary::before {
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--dx-text, #0d0b08);
-  border-bottom: 0;
-}
-
-.reflect-fold > summary .fold-line,
-.reflect-fold > summary h2,
-.reflect-fold > summary h3,
-.reflect-fold > summary h4,
-.reflect-fold > summary h5,
-.reflect-fold > summary h6 {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  color: inherit;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.reflect-fold > summary:focus-visible,
 .reflect-box:focus-visible,
 .reflect-save:focus-visible {
   outline: 3px solid var(--dx-accent, #1d4ed8);

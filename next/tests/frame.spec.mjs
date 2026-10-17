@@ -1,4 +1,7 @@
 import { spawn, execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const REPO = fileURLToPath(new URL("../..", import.meta.url)).replace(/\/$/, "");
 import { chromium } from "/tmp/jt/node_modules/playwright/index.mjs";
 import AxeBuilder from "/tmp/jt/node_modules/@axe-core/playwright/dist/index.mjs";
 
@@ -36,7 +39,7 @@ const fixture = {
 let server = null;
 
 function setupSite() {
-  execSync('mkdir -p /tmp/site/ui && ln -sfn "' + process.cwd() + '" /tmp/site/journal');
+  execSync('mkdir -p /tmp/site/ui && ln -sfn "' + REPO + '" /tmp/site/journal');
   try {
     execSync("test -s /tmp/site/ui/shell.css");
   } catch (e) {
@@ -156,7 +159,9 @@ async function tabThrough(page) {
     const info = await page.evaluate(function () {
       const el = document.activeElement;
       if (!el || el === document.body || el === document.documentElement) return null;
-      const name = (el.getAttribute("aria-label") || el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+      const by = (el.getAttribute("aria-labelledby") || "").split(/\s+/).map(function (id) { const n = id && document.getElementById(id); return n ? n.textContent : ""; }).join(" ");
+      const label = el.labels && el.labels.length ? el.labels[0].textContent : "";
+      const name = (el.getAttribute("aria-label") || by.trim() || label || el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       const style = getComputedStyle(el);
       const box = el.getBoundingClientRect();
       return {
@@ -193,8 +198,8 @@ async function run() {
   assert((await heading.innerText()).indexOf("October 17, 2026") !== -1, "day heading should name 17 October 2026");
   assert((await page.title()).indexOf("October 17, 2026") !== -1, "document title should name the day");
   assert(await page.locator('nav[aria-label="Review period"] a[aria-current="page"]').innerText() === "Day", "Day tab is current");
-  assert(await page.locator('details[data-fold="day:morning"]').evaluate(function (el) { return el.open; }) === true, "Robin fold id day:morning stays open");
-  assert(await page.locator('details[data-fold="day:todos"]').evaluate(function (el) { return el.open; }) === false, "a fold that was not opened stays closed");
+  assert(await page.locator('[data-fold="day:morning"]').evaluate(function (el) { return el.open; }) === true, "Robin fold id day:morning stays open");
+  assert(await page.locator('[data-fold="day:todos"]').evaluate(function (el) { return el.open; }) === false, "a fold that was not opened stays closed");
   assert(await scrollWidth(page) <= 360, "day view scrolls sideways: " + await scrollWidth(page));
 
   const stops = await tabThrough(page);
@@ -209,17 +214,18 @@ async function run() {
   assert(names[12].indexOf("Week") === 0, "breadcrumb week, got " + names[12]);
   assert(names[13].indexOf("Day") === 0, "breadcrumb day, got " + names[13]);
   assert(names[14] === "Previous day", "previous control, got " + names[14]);
-  assert(names[15] === "Today", "today control, got " + names[15]);
-  assert(names[16] === "Next day", "next control, got " + names[16]);
-  assert(names[17].indexOf("Morning") === 0, "first fold follows next, got " + names[17]);
+  assert(names[15] === "Next day", "next control (Today is disabled on today), got " + names[15]);
+  assert(names[16].indexOf("Quote") === 0, "quote fold follows next, got " + names[16]);
+  assert(names[17].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[17]);
+  assert(await page.locator("#today").isDisabled(), "Today is disabled while on today");
   stops.forEach(function (stop) {
     assert(stop.name.length > 0, "control is missing an accessible name: " + stop.tag);
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "focus ring missing on " + stop.name + " " + stop.outline + " " + stop.outlineWidth);
     assert(stop.width >= 44 && stop.height >= 44, "tap target under 44px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
   });
 
-  const todos = page.locator('details[data-fold="day:todos"]');
-  await todos.locator("summary").focus();
+  const todos = page.locator('[data-fold="day:todos"]');
+  await todos.locator(".fold-summary").focus();
   await page.keyboard.press("Enter");
   assert(await todos.evaluate(function (el) { return el.open; }) === true, "Enter opens a fold");
   await page.keyboard.press("Enter");
@@ -251,10 +257,10 @@ async function run() {
     const obs = new MutationObserver(function () { window.__syncLog.push(el.textContent); });
     obs.observe(el, { childList: true, subtree: true, characterData: true });
   });
-  await page.locator('details[data-fold="day:todos"] summary').click();
+  await page.locator('[data-fold="day:todos"] .fold-summary').click();
   const putWait = page.waitForRequest(function (req) { return req.method() === "PUT"; });
   await page.getByRole("checkbox", { name: "Call bank" }).click();
-  const queue = await page.evaluate(function () { return JSON.parse(localStorage.getItem("journal-next-ops") || "[]"); });
+  const queue = await page.evaluate(function () { return (JSON.parse(localStorage.getItem("journal-next-ops") || "{}").ops) || []; });
   assert(queue.length === 1, "tick should queue one operation, got " + JSON.stringify(queue));
   assert(queue[0].type === "todoPatch" && queue[0].key === DAY && queue[0].id === "t1" && queue[0].patch.done === true, "queued op should be the tick: " + JSON.stringify(queue[0]));
   await putWait;
@@ -275,18 +281,18 @@ async function run() {
   assert(await page.evaluate(function () { return localStorage.getItem("journal-v1"); }) === JSON.stringify({ sentinel: true }), "journal-v1 must stay untouched");
 
   await page.evaluate(function () {
-    document.querySelectorAll("details").forEach(function (el) { el.open = false; });
+    document.querySelectorAll(".fold").forEach(function (el) { el.open = false; });
   });
   await axeSerious(page, "axe with folds closed");
   assert(await scrollWidth(page) <= 360, "closed folds scroll sideways");
   await page.evaluate(function () {
-    document.querySelectorAll("details").forEach(function (el) { el.open = true; });
+    document.querySelectorAll(".fold").forEach(function (el) { el.open = true; });
   });
   await axeSerious(page, "axe with folds open");
   assert(await scrollWidth(page) <= 360, "open folds scroll sideways");
   const openStops = await tabThrough(page);
   openStops.forEach(function (stop) {
-    assert(stop.name.length > 0, "open fold control missing a name");
+    assert(stop.name.length > 0, "open fold control missing a name: " + stop.tag + " " + JSON.stringify(stop));
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "open fold focus ring missing on " + stop.name);
     assert(stop.width >= 44 && stop.height >= 44, "open fold tap target under 44px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
   });
@@ -294,11 +300,11 @@ async function run() {
   await page.evaluate(function () {
     if (window.DongUI) window.DongUI.setTheme("dark");
     document.documentElement.classList.add("dark");
-    document.querySelectorAll("details").forEach(function (el) { el.open = false; });
+    document.querySelectorAll(".fold").forEach(function (el) { el.open = false; });
   });
   await axeSerious(page, "axe dark with folds closed");
   await page.evaluate(function () {
-    document.querySelectorAll("details").forEach(function (el) { el.open = true; });
+    document.querySelectorAll(".fold").forEach(function (el) { el.open = true; });
   });
   await axeSerious(page, "axe dark with folds open");
 
