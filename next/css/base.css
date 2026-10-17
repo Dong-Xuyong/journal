@@ -211,6 +211,11 @@ html.dark .dx-tabs > a[aria-current="page"] {
   gap: 8px;
 }
 
+.period-nav .dx-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .period-nav .dx-btn {
   flex: 1 1 30%;
   max-width: 100%;
@@ -471,6 +476,12 @@ body.dx :focus-visible {
   border-radius: 10px;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.info-by {
+  display: block;
+  margin-top: 4px;
+  color: var(--jn-muted);
 }
 
 .undo-row {
