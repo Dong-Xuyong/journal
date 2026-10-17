@@ -4,28 +4,31 @@
     day: {
       label: "Day",
       icon: "☀️",
-      parent: { period: "week", field: "oneThing", prefix: "🗓️ This week" },
+      parent: { period: "week", field: "oneThing", prefix: "This week" },
       sections: [
         {
-          title: "🌅 Morning",
+          id: "morning",
+          title: "Morning",
           fields: [
             { key: "mood", type: "scale", label: "Mood" },
             { key: "energy", type: "scale", label: "Energy" },
-            { key: "focus", type: "text", label: "🎯 Focus word" },
-            { key: "grateful", type: "trio", label: "🙏 Grateful for" },
-            { key: "makeGreat", type: "area", label: "✨ What will make today great" },
-            { key: "affirmation", type: "text", label: "🗣️ Daily affirmation" }
+            { key: "focus", type: "text", label: "Focus" },
+            { key: "grateful", type: "trio", label: "Grateful" },
+            { key: "makeGreat", type: "area", label: "What would make today great" },
+            { key: "affirmation", type: "text", label: "A line to repeat" }
           ]
         },
         {
-          title: "🌙 Evening",
+          id: "evening",
+          title: "Evening",
           fields: [
-            { key: "highlights", type: "area", label: "🌟 Highlights" },
-            { key: "better", type: "area", label: "🌱 How today could have been better" }
+            { key: "highlights", type: "area", label: "Highlights" },
+            { key: "better", type: "area", label: "What I would change" }
           ]
         },
         {
-          title: "✅ To-dos",
+          id: "todos",
+          title: "To-dos",
           fields: [{ key: "todos", type: "todos", carry: true }]
         }
       ]
@@ -33,39 +36,43 @@
     week: {
       label: "Week",
       icon: "🗓️",
-      parent: { period: "month", field: "oneThing", prefix: "🌙 This month" },
+      parent: { period: "month", field: "oneThing", prefix: "This month" },
       moodStrip: true,
-      reviewPrevTodos: "🔄 Last week's to-dos",
+      reviewPrevTodos: "Last week",
       sections: [
         {
-          title: "🧭 Planning",
+          id: "planning",
+          title: "Planning",
           fields: [
-            { key: "enjoyment", type: "enjoy", label: "😀 Enjoyment" },
-            { key: "why", type: "text", label: "🤔 Why" },
-            { key: "oneThing", type: "area", label: "🎯 The one thing that would make this week a success" }
+            { key: "enjoyment", type: "enjoy", label: "How the week felt" },
+            { key: "why", type: "text", label: "Why" },
+            { key: "oneThing", type: "area", label: "One thing that would make this week good" }
           ]
         },
         {
-          title: "🏆 Review",
+          id: "review",
+          title: "Review",
           fields: [
-            { key: "wins", type: "area", label: "🏆 Wins" },
-            { key: "accomplishments", type: "area", label: "✅ Accomplishments" },
-            { key: "improve", type: "area", label: "🌱 What I could improve" },
-            { key: "rootCause", type: "text", label: "🔍 Root cause" }
+            { key: "wins", type: "area", label: "Wins" },
+            { key: "accomplishments", type: "area", label: "What I finished" },
+            { key: "improve", type: "area", label: "What to improve" },
+            { key: "rootCause", type: "text", label: "What caused it" }
           ]
         },
         {
-          title: "💭 Reflection",
+          id: "reflection",
+          title: "Reflection",
           fields: [
-            { key: "grateful", type: "trio", label: "🙏 Grateful for" },
-            { key: "lesson", type: "area", label: "💡 Lesson of the week" }
+            { key: "grateful", type: "trio", label: "Grateful" },
+            { key: "lesson", type: "area", label: "Lesson" }
           ]
         },
         {
-          title: "🔭 Looking ahead",
+          id: "ahead",
+          title: "Looking ahead",
           fields: [
             { key: "todos", type: "todos" },
-            { key: "watch", type: "area", label: "⚠️ Things to watch out for" }
+            { key: "watch", type: "area", label: "Watch out for" }
           ]
         }
       ]
@@ -73,27 +80,30 @@
     month: {
       label: "Month",
       icon: "🌙",
-      parent: { period: "quarter", field: "mainQuest", prefix: "⚔️ This quarter" },
-      reviewPrevTodos: "🔄 Last month's to-dos",
+      parent: { period: "quarter", field: "mainQuest", prefix: "This quarter" },
+      reviewPrevTodos: "Last month",
       sections: [
         {
-          title: "🌅 Planning",
+          id: "planning",
+          title: "Planning",
           fields: [
-            { key: "oneThing", type: "area", label: "🎯 The one thing that would make this month a success" }
+            { key: "oneThing", type: "area", label: "One thing that would make this month good" }
           ]
         },
         {
-          title: "📖 Review",
+          id: "review",
+          title: "Review",
           fields: [
-            { key: "wins", type: "area", label: "🏆 Wins" },
-            { key: "accomplishments", type: "area", label: "✅ Accomplishments" },
-            { key: "improve", type: "area", label: "🌱 What I could improve" },
-            { key: "rootCause", type: "text", label: "🔍 Root cause" },
-            { key: "goalsReview", type: "area", label: "🔄 Did I move the year goals forward?" }
+            { key: "wins", type: "area", label: "Wins" },
+            { key: "accomplishments", type: "area", label: "What I finished" },
+            { key: "improve", type: "area", label: "What to improve" },
+            { key: "rootCause", type: "text", label: "What caused it" },
+            { key: "goalsReview", type: "area", label: "Did the year goals move?" }
           ]
         },
         {
-          title: "✅ To-dos",
+          id: "todos",
+          title: "To-dos",
           fields: [{ key: "todos", type: "todos" }]
         }
       ]
@@ -101,33 +111,36 @@
     quarter: {
       label: "Quarter",
       icon: "🧭",
-      parent: { period: "year", field: "vision", prefix: "🏔️ This year" },
-      reviewPrevTodos: "🔄 Last quarter's to-dos",
+      parent: { period: "year", field: "vision", prefix: "This year" },
+      reviewPrevTodos: "Last quarter",
       sections: [
         {
-          title: "🎯 Focus",
+          id: "focus",
+          title: "Focus",
           fields: [
-            { key: "mainQuest", type: "text", label: "⚔️ Main quest" },
-            { key: "q1", type: "area", label: "🥇 The single most important goal for the next 3 months" },
-            { key: "q2", type: "area", label: "📈 What would move the needle the most" },
-            { key: "q3", type: "area", label: "🏅 The accomplishment that would make me proud" },
-            { key: "q4", type: "area", label: "🔑 The one thing that would make everything else easier" },
-            { key: "q5", type: "area", label: "⏳ What I have been postponing" },
-            { key: "q6", type: "area", label: "🌄 First two hours of my work day focused on" },
-            { key: "commit90", type: "area", label: "🤝 In the next 90 days I will have" },
-            { key: "goingTo", type: "area", label: "🛠️ To complete it I am going to" }
+            { key: "mainQuest", type: "text", label: "Main goal" },
+            { key: "q1", type: "area", label: "Most important goal" },
+            { key: "q2", type: "area", label: "What would help most" },
+            { key: "q3", type: "area", label: "What would make me proud" },
+            { key: "q4", type: "area", label: "What would make the rest easier" },
+            { key: "q5", type: "area", label: "What I keep putting off" },
+            { key: "q6", type: "area", label: "First two hours of work" },
+            { key: "commit90", type: "area", label: "In 90 days I will have" },
+            { key: "goingTo", type: "area", label: "How I will do it" }
           ]
         },
         {
-          title: "📖 Review",
+          id: "review",
+          title: "Review",
           fields: [
-            { key: "wins", type: "area", label: "🏆 Wins this quarter" },
-            { key: "improve", type: "area", label: "🌱 What to improve next quarter" },
-            { key: "yearProgress", type: "area", label: "🔄 Did this quarter move the year goals forward?" }
+            { key: "wins", type: "area", label: "Wins" },
+            { key: "improve", type: "area", label: "What to improve" },
+            { key: "yearProgress", type: "area", label: "Did the year goals move?" }
           ]
         },
         {
-          title: "✅ To-dos",
+          id: "todos",
+          title: "To-dos",
           fields: [{ key: "todos", type: "todos" }]
         }
       ]
@@ -137,23 +150,26 @@
       icon: "🏔️",
       sections: [
         {
-          title: "🌟 Vision",
+          id: "vision",
+          title: "Vision",
           fields: [
-            { key: "vision", type: "area", label: "🌟 The person I want to be by December" },
-            { key: "principle", type: "text", label: "🧭 Guiding principle" }
+            { key: "vision", type: "area", label: "Who I want to be by December" },
+            { key: "principle", type: "text", label: "Guiding line" }
           ]
         },
         {
-          title: "🎯 Goals",
+          id: "goals",
+          title: "Goals",
           fields: [{ key: "todos", type: "todos", status: true }]
         },
         {
-          title: "📖 Year-end review",
+          id: "review",
+          title: "Year-end review",
           fields: [
-            { key: "wins", type: "area", label: "🏆 Biggest wins" },
-            { key: "finished", type: "area", label: "✅ What I finished" },
-            { key: "differently", type: "area", label: "🔁 What I would do differently" },
-            { key: "lessons", type: "area", label: "💡 Lessons learned" }
+            { key: "wins", type: "area", label: "Biggest wins" },
+            { key: "finished", type: "area", label: "What I finished" },
+            { key: "differently", type: "area", label: "What I would change" },
+            { key: "lessons", type: "area", label: "Lessons" }
           ]
         }
       ]

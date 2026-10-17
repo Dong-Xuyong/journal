@@ -1069,18 +1069,41 @@ html.dark .nudge.ease { color: #fdba74; }
 
 .habit-open-label { color: var(--dx-accent); }
 
-.reflections { padding-bottom: 14px; }
-.reflections > summary {
+.fold { padding-top: 12px; padding-bottom: 12px; }
+.fold-summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  margin: 0 0 12px;
-  font-weight: 700;
+  margin: 0;
+  min-height: 32px;
   cursor: pointer;
   list-style: none;
+  font-weight: 700;
+  line-height: 1.35;
 }
-.reflections > summary::-webkit-details-marker { display: none; }
+.fold-summary::-webkit-details-marker { display: none; }
+.fold-summary::before {
+  content: "\203A";
+  flex: 0 0 auto;
+  width: 0.7em;
+  color: var(--dx-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.fold[open] > .fold-summary::before { transform: rotate(90deg); }
+.fold-line { min-width: 0; flex: 1; }
+.fold[open] > .fold-summary { margin-bottom: 12px; }
+.fold:not([open]) > .fold-summary .fold-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fold-why {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 8px;
+}
+.reflections { padding-bottom: 14px; }
 .reflect-count {
   color: var(--dx-muted);
   font-size: 0.75rem;
