@@ -1,7 +1,7 @@
 /* Copy journal.json to backups/journal-<ISO>.json and check SHA-256.
-   GitHub: node next/tools/backup-journal.mjs
+   GitHub: node tools/backup-journal.mjs
    Token: GITHUB_TOKEN or DONG_GH_TOKEN, or --token. Repo: Dong-Xuyong/progress-sync.
-   Local check: node next/tools/backup-journal.mjs --local <src> <destDir>
+   Local check: node tools/backup-journal.mjs --local <src> <destDir>
    Never overwrites an existing backup. */
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -142,7 +142,7 @@ async function githubBackup(repo, token) {
 var args = parseArgs(process.argv.slice(2));
 if (args.local) {
   if (!args.src || !args.dest) {
-    console.error("Usage: node next/tools/backup-journal.mjs --local <src> <destDir>");
+    console.error("Usage: node tools/backup-journal.mjs --local <src> <destDir>");
     process.exit(1);
   }
   localBackup(args.src, args.dest).catch(function (err) {
