@@ -1,6 +1,6 @@
 /**
  * Whole app at 360px with the real JournalData, JournalOps and JournalUI.
- * Run from anywhere: node next/tests/integration.spec.mjs
+ * Run from anywhere: node tests/integration.spec.mjs (BASE=<url> to test a deployed copy)
  * Needs: npm i --prefix /tmp/jt playwright @axe-core/playwright
  * Serves /tmp/site on :8000 (/journal -> this repo, /ui/shell.css from the live kit).
  */
@@ -10,8 +10,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "/tmp/jt/node_modules/playwright/index.mjs";
 import AxeBuilder from "/tmp/jt/node_modules/@axe-core/playwright/dist/index.mjs";
 
-const REPO = fileURLToPath(new URL("../..", import.meta.url)).replace(/\/$/, "");
-const BASE = process.env.BASE || "http://127.0.0.1:8000/journal/next/";
+const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
+const BASE = process.env.BASE || "http://127.0.0.1:8000/journal/";
 const FIXTURE_TEXT = readFileSync(new URL("./fixture.json", import.meta.url), "utf8");
 const FIXTURE = JSON.parse(FIXTURE_TEXT);
 const DAY = "2026-10-17";
@@ -350,7 +350,7 @@ async function links(browser) {
     at = await landed(BASE + hash);
     check("route " + hash + " opens", at.hash === hash, JSON.stringify(at));
   }
-  if (process.env.REDIRECT === "1") {
+  if (process.env.REDIRECT !== "0") {
     at = await landed(BASE + "next/#week/2026-W42");
     check("/journal/next/ redirects to /journal/ and keeps the hash", at.path === root && at.hash === "#week/2026-W42", JSON.stringify(at));
   }

@@ -1,3 +1,5 @@
+> Historical briefs. Since the cutover, the `next/` paths below live at the repo root (`js/`, `css/`, `tests/`), and `/journal/next/` redirects to `/journal/`.
+
 # Journal next — design pass briefs
 
 Dong's feedback on the Day view (Oct 17 2026), applied to all of `next/`, Journal and Habits:
