@@ -9,51 +9,54 @@
   <title>Journal & Reviews</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="dong-ui/theme.css?v=4" />
-  <link rel="stylesheet" href="/ui/shell.css?v=1" />
-  <link rel="stylesheet" href="styles.css?v=13" />
-  <script src="dong-ui/theme.js"></script>
+  <link rel="stylesheet" href="dong-ui/theme.css" />
+  <link rel="stylesheet" href="/ui/shell.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/day.css" />
+  <link rel="stylesheet" href="css/reflect.css" />
+  <link rel="stylesheet" href="css/period.css" />
+  <link rel="stylesheet" href="css/habits.css" />
   <link rel="manifest" href="manifest.webmanifest" />
+  <script src="dong-ui/theme.js"></script>
 </head>
 <body class="dx">
-  <a class="skip" href="#form">Skip to journal</a>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="dx-header">
     <a class="dx-home" href="/" aria-label="Home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
     </a>
-    <h1 class="dx-title">📓 Journal & Reviews</h1>
+    <h1 class="dx-title">Journal &amp; Reviews</h1>
     <div class="dx-actions">
       <span id="sync-label" aria-live="polite"></span>
-      <button type="button" data-dong-theme-toggle role="switch" aria-checked="false" aria-label="Toggle color theme"></button>
+      <button type="button" data-dong-theme-toggle aria-label="Toggle color theme"></button>
     </div>
   </header>
   <nav id="tabs" class="dx-tabs" aria-label="Review period"></nav>
-  <section id="hero" class="hero dx-card" aria-labelledby="period-label">
-    <div class="hero-top">
-      <span id="hero-icon" class="hero-icon" aria-hidden="true"></span>
-      <div class="hero-text">
-        <h2 id="period-label"></h2>
-        <p id="parent-line"></p>
+  <nav id="crumbs" class="crumbs" aria-label="Breadcrumb"></nav>
+  <main id="main" tabindex="-1">
+    <div class="period dx-card">
+      <h2 id="period-heading" tabindex="-1"></h2>
+      <div class="period-nav">
+        <button type="button" id="prev" class="dx-btn dx-btn--ghost">Previous</button>
+        <button type="button" id="today" class="dx-btn dx-btn--ghost">Today</button>
+        <button type="button" id="next" class="dx-btn dx-btn--ghost">Next</button>
       </div>
     </div>
-    <div class="hero-foot">
-      <div id="completion"></div>
-      <nav class="period-nav" aria-label="Choose a date">
-        <button type="button" id="prev" class="dx-btn dx-btn--ghost"><span aria-hidden="true">‹</span><span class="visually-hidden">Previous</span></button>
-        <button type="button" id="today" class="dx-btn dx-btn--ghost">Today</button>
-        <button type="button" id="next" class="dx-btn dx-btn--ghost"><span aria-hidden="true">›</span><span class="visually-hidden">Next</span></button>
-      </nav>
-    </div>
-  </section>
-  <main id="form" tabindex="-1" aria-label="Journal"></main>
-  <footer id="connect" hidden>
-    <button type="button" id="btn-connect" class="dx-btn">🔑 Connect GitHub to sync</button>
+    <div id="view"></div>
+  </main>
+  <footer id="connect">
+    <button type="button" id="btn-connect" class="dx-btn">Connect GitHub</button>
   </footer>
-  <script src="dong-ui/gh-sync.js?v=4"></script>
-  <script src="core.js?v=6"></script>
-  <script src="schemas.js?v=5"></script>
-  <script src="gamify.js?v=10"></script>
-  <script src="habits.js?v=9"></script>
-  <script src="app.js?v=13"></script>
+  <div id="announce" class="sr-only" aria-live="polite"></div>
+  <script src="js/data.js"></script>
+  <script src="js/ops.js"></script>
+  <script src="js/cites.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/trends.js"></script>
+  <script src="js/views/reflect.js"></script>
+  <script src="js/views/day.js"></script>
+  <script src="js/views/period.js"></script>
+  <script src="js/views/habits.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

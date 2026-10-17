@@ -10,7 +10,7 @@ const require = createRequire("/tmp/jt/package.json");
 const { chromium } = require("playwright");
 const { AxeBuilder } = require("@axe-core/playwright");
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const shellPath = "/tmp/site/ui/shell.css";
 const TODAY = "2026-10-17";
 
@@ -82,8 +82,8 @@ function harness(data) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Habits</title>
   <link rel="stylesheet" href="/ui/shell.css" />
-  <link rel="stylesheet" href="/journal/next/css/base.css" />
-  <link rel="stylesheet" href="/journal/next/css/habits.css" />
+  <link rel="stylesheet" href="/journal/css/base.css" />
+  <link rel="stylesheet" href="/journal/css/habits.css" />
   <style>
     html, body { margin: 0; background: #f6f4ef; }
     #main { box-sizing: border-box; padding: 8px; max-width: 100%; }
@@ -115,9 +115,9 @@ function harness(data) {
       return origFetch.apply(this, arguments);
     };
   </script>
-  <script src="/journal/next/js/data.js"></script>
-  <script src="/journal/next/js/ops.js"></script>
-  <script src="/journal/next/js/ui.js"></script>
+  <script src="/journal/js/data.js"></script>
+  <script src="/journal/js/ops.js"></script>
+  <script src="/journal/js/ui.js"></script>
   <script>
     JournalData.load(JSON.parse(window.__seal));
     window.__bootHabits = function () {
@@ -130,7 +130,7 @@ function harness(data) {
     };
     window.addEventListener("hashchange", window.__bootHabits);
   </script>
-  <script src="/journal/next/js/views/habits.js"></script>
+  <script src="/journal/js/views/habits.js"></script>
   <script>window.__bootHabits();</script>
 </body>
 </html>`;
