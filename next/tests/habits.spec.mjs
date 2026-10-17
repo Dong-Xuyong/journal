@@ -73,80 +73,6 @@ function fixture() {
   };
 }
 
-function standInScript() {
-  return `(function () {
-    if (!window.JournalUI) return;
-    if (typeof JournalUI.plain !== "function") {
-      JournalUI.plain = function (text) {
-        var value = String(text == null ? "" : text);
-        value = value.replace(/!\\?/g, "?").replace(/\\?!/g, "?");
-        value = value.replace(/!+(?=\\s|$)/g, ".");
-        value = value.replace(/!/g, "");
-        return value;
-      };
-    }
-    if (typeof JournalUI.dots !== "function") {
-      JournalUI.dots = function (value, max, label) {
-        var span = document.createElement("span");
-        var count = Number(max) || 0;
-        var logged = value == null || value !== value ? null : Number(value);
-        var i;
-        var dot;
-        span.className = "jn-dots" + (logged == null ? " is-empty" : "");
-        span.setAttribute("role", "img");
-        span.setAttribute("aria-label", logged == null ? String(label) + " not logged" : String(label) + " " + logged + " of " + count);
-        for (i = 0; i < count; i++) {
-          dot = document.createElement("span");
-          dot.className = "jn-dot" + (logged != null && i < logged ? " on" : "");
-          span.appendChild(dot);
-        }
-        return span;
-      };
-    }
-    if (typeof JournalUI.chip !== "function") {
-      JournalUI.chip = function (spec) {
-        spec = spec || {};
-        var span = document.createElement("span");
-        var mark;
-        span.className = "jn-chip";
-        if (spec.emoji) {
-          mark = document.createElement("span");
-          mark.setAttribute("aria-hidden", "true");
-          mark.textContent = spec.emoji;
-          span.appendChild(mark);
-        }
-        if (spec.label) span.appendChild(document.createTextNode(String(spec.label)));
-        if (spec.text != null) span.appendChild(document.createTextNode(String(spec.text)));
-        else span.appendChild(JournalUI.dots(spec.value, spec.max, spec.label || ""));
-        return span;
-      };
-    }
-    if (typeof JournalUI.fold === "function" && !JournalUI.fold.__emoji) {
-      var orig = JournalUI.fold;
-      var wrapped = function (opts) {
-        var made = orig(opts || {});
-        var emoji = opts && opts.emoji;
-        var btn;
-        var slot;
-        var line;
-        if (!emoji || !made || !made.root) return made;
-        btn = made.root.querySelector(".fold-summary");
-        if (!btn || btn.querySelector(".fold-emoji")) return made;
-        slot = document.createElement("span");
-        slot.className = "fold-emoji";
-        slot.setAttribute("aria-hidden", "true");
-        slot.textContent = emoji;
-        line = btn.querySelector(".fold-line");
-        if (line) btn.insertBefore(slot, line);
-        else btn.appendChild(slot);
-        return made;
-      };
-      wrapped.__emoji = true;
-      JournalUI.fold = wrapped;
-    }
-  })();`;
-}
-
 function harness(data) {
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
@@ -193,7 +119,6 @@ function harness(data) {
   <script src="/journal/next/js/data.js"></script>
   <script src="/journal/next/js/ops.js"></script>
   <script src="/journal/next/js/ui.js"></script>
-  <script>${standInScript()}</script>
   <script>
     JournalData.load(JSON.parse(window.__seal));
     window.__bootHabits = function () {
@@ -440,7 +365,6 @@ function reflectHarness() {
   <script src="/journal/next/js/data.js"></script>
   <script src="/journal/next/js/ops.js"></script>
   <script src="/journal/next/js/ui.js"></script>
-  <script>${standInScript()}</script>
   <script src="/journal/next/js/views/reflect.js"></script>
   <script>
     window.__mode = "day";

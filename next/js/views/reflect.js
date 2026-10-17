@@ -150,9 +150,7 @@
   }
 
   function shownQuestion(text) {
-    var value = String(text || "");
-    if (window.JournalUI && typeof window.JournalUI.plain === "function") return window.JournalUI.plain(value);
-    return value;
+    return window.JournalUI.plain(String(text || ""));
   }
 
   function makeFold(spec) {
@@ -165,20 +163,6 @@
     if (spec.emoji) opts.emoji = spec.emoji;
     var folded = window.JournalUI.fold(opts);
     addClass(folded.root, "reflect-fold");
-    if (spec.emoji) {
-      var button = folded.root.querySelector(".fold-summary");
-      var slot;
-      var line;
-      if (button && !button.querySelector(".fold-emoji")) {
-        slot = document.createElement("span");
-        slot.className = "fold-emoji";
-        slot.setAttribute("aria-hidden", "true");
-        slot.textContent = spec.emoji;
-        line = button.querySelector(".fold-line");
-        if (line) button.insertBefore(slot, line);
-        else button.appendChild(slot);
-      }
-    }
     if (spec.extraClass) addClass(folded.root, spec.extraClass);
     folded.root.addEventListener("click", function (event) {
       event.stopPropagation();

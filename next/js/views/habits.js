@@ -72,19 +72,14 @@
   }
 
   function labelOf(def) {
-    var raw = def && def.label != null ? String(def.label) : "";
-    if (window.JournalUI && typeof JournalUI.plain === "function") return JournalUI.plain(raw);
-    return raw;
+    return JournalUI.plain(def && def.label != null ? String(def.label) : "");
   }
 
   function mountTodayDots(made, value, max) {
     var btn;
     var dots;
-    if (!made || !made.root || !window.JournalUI || typeof JournalUI.dots !== "function") return;
     btn = made.root.querySelector(".fold-summary");
-    if (!btn) return;
     dots = JournalUI.dots(value, max, "Done");
-    if (!dots) return;
     dots.setAttribute("aria-hidden", "true");
     dots.classList.add("today-dots");
     btn.appendChild(dots);
@@ -220,22 +215,6 @@
     return MONTHS[Number(key.slice(5, 7)) - 1] + " " + key.slice(2, 4);
   }
 
-  function ensureFoldEmoji(root, emoji) {
-    var button;
-    var slot;
-    var line;
-    if (!emoji || !root) return;
-    button = root.querySelector(".fold-summary");
-    if (!button || button.querySelector(".fold-emoji")) return;
-    slot = document.createElement("span");
-    slot.className = "fold-emoji";
-    slot.setAttribute("aria-hidden", "true");
-    slot.textContent = emoji;
-    line = button.querySelector(".fold-line");
-    if (line) button.insertBefore(slot, line);
-    else button.appendChild(slot);
-  }
-
   function section(id, title, summary, emoji) {
     var opts = { id: id, title: title, level: 3, summary: summary };
     if (emoji) opts.emoji = emoji;
@@ -243,7 +222,6 @@
     made.root.classList.add("habit-fold", "dx-card");
     made.root.setAttribute("data-fold", id);
     if (made.body) made.body.classList.add("habit-body");
-    ensureFoldEmoji(made.root, emoji);
     return made;
   }
 
@@ -404,7 +382,7 @@
     var weeks = heatWeeks(today);
     var loggedDays = loggedCount(weeks, defs, today);
     var focus = selected ? findDef(defs, selected) : null;
-    var summary = "Year in days · " + (focus ? focus.label + " · " : "") + loggedDays + (loggedDays === 1 ? " day logged" : " days logged");
+    var summary = "Year in days \u00b7 " + (focus ? labelOf(focus) + " \u00b7 " : "") + loggedDays + (loggedDays === 1 ? " day logged" : " days logged");
     var made = section("habit-year", "Year in days", summary, "\uD83D\uDDD3\uFE0F");
     var chips = node("div", "habit-chips");
     var scroll = node("div", "heat-scroll");
