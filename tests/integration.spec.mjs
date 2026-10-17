@@ -1,5 +1,6 @@
 /**
- * Whole app at 360px with the real JournalData, JournalOps and JournalUI.
+ * Whole app at 360px with the real JournalData, JournalSync and JournalUI.
+ * The app is read-only: it must never show an edit control or send a write.
  * Run from anywhere: node tests/integration.spec.mjs (BASE=<url> to test a deployed copy)
  * Needs: npm i --prefix /tmp/jt playwright @axe-core/playwright
  * Serves /tmp/site on :8000 (/journal -> this repo, /ui/shell.css from the live kit).
@@ -75,7 +76,10 @@ async function newPage(browser, opts) {
   }, { raw: FIXTURE_TEXT, token: !!(opts && opts.token) });
   const page = await context.newPage();
   page.errors = [];
-  page.puts = [];
+  page.writes = [];
+  page.on("request", function (req) {
+    if (req.method() !== "GET" && req.method() !== "HEAD") page.writes.push(req.method() + " " + req.url());
+  });
   page.on("pageerror", function (e) { page.errors.push("pageerror " + e.message); });
   page.on("console", function (m) {
     if (m.type() === "error" && !/favicon|fonts\.g/.test(m.text())) page.errors.push("console " + m.text());
@@ -92,10 +96,6 @@ async function newPage(browser, opts) {
         contentType: "application/json",
         body: JSON.stringify({ sha: "abc123", encoding: "base64", content: Buffer.from(FIXTURE_TEXT).toString("base64") })
       });
-    }
-    if (req.method() === "PUT") {
-      page.puts.push(JSON.parse(req.postData() || "{}"));
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: { sha: "def456" } }) });
     }
     return route.fulfill({ status: 404, body: "" });
   });
@@ -134,6 +134,7 @@ async function routes(browser) {
         focus: document.activeElement && document.activeElement.id,
         open: document.querySelectorAll("#view .fold.is-open").length,
         folds: document.querySelectorAll("#view .fold").length,
+        controls: document.querySelectorAll("#main input, #main textarea, #main select, #main [contenteditable], #main [role=checkbox], #main [role=textbox]").length,
         crumbs: Array.from(document.querySelectorAll("#crumbs a")).map(function (a) { return a.textContent.replace(/\s+/g, " ").trim(); }).join(">")
       };
     });
@@ -147,6 +148,18 @@ async function routes(browser) {
     check(hash + " axe AA, folds open", !opened.length, opened.join("; "));
     const sw = await page.evaluate(function () { return document.documentElement.scrollWidth; });
     check(hash + " fits 360px with folds open", sw <= 360, String(sw));
+    const openControls = await page.evaluate(function () {
+      const buttons = Array.from(document.querySelectorAll("#main button")).map(function (b) { return b.textContent.trim(); });
+      return {
+        n: document.querySelectorAll("#main input, #main textarea, #main select, #main [contenteditable], #main [role=checkbox], #main [role=textbox]").length,
+        edit: buttons.filter(function (t) { return /^(save|edit|add|delete|undo|remove)\b/i.test(t); })
+      };
+    });
+    check(hash + " is read-only", info.controls === 0 && openControls.n === 0 && !openControls.edit.length, JSON.stringify(openControls));
+    if (hash.indexOf("#habits") !== 0) {
+      const apps = await page.evaluate(function () { return document.querySelectorAll('#view a[href*="dong-xuyong.github.io"], #view a[href^="../"], #view a[href^="/"]').length; });
+      check(hash + " has no other-app links", apps === 0, String(apps));
+    }
     await setFolds(page, false);
     if (hash === "#day/2026-10-17") check("day breadcrumb runs year to day", info.crumbs === "2026>Q4>Oct>W42>Sat 17", info.crumbs);
     if (hash === "#quarter/2026-Q4") check("quarter breadcrumb", info.crumbs === "2026>Q4", info.crumbs);
@@ -169,7 +182,11 @@ async function dayCopy(browser) {
   check("evening summary counts wins, not highlights", (await line(page, "day:evening")) === "Evening \u00b7 mood 4 / energy 4 \u00b7 2 wins", await line(page, "day:evening"));
   check("to-do summary", (await line(page, "day:todos")) === "To-dos \u00b7 1 left", await line(page, "day:todos"));
   check("quote summary", /^Quote \u00b7 \S/.test(await line(page, "day:quote")), await line(page, "day:quote"));
-  check("reflection summary", /^Reflection \u00b7 today: Q\d \u00b7 \d+ answered$/.test(await line(page, "day:reflection")), await line(page, "day:reflection"));
+  const reflect = await page.evaluate(function () {
+    const card = document.querySelector('#view [data-reflect="day"]');
+    return card ? { fold: !!card.closest("details"), visible: card.getBoundingClientRect().height > 60, title: card.querySelector(".jn-card-title").textContent, q: card.querySelector(".reflect-question").textContent } : null;
+  });
+  check("reflection shows on the day view without opening anything", !!reflect && !reflect.fold && reflect.visible && reflect.title.indexOf("Reflection") !== -1 && reflect.q.length > 10, JSON.stringify(reflect));
   await setFolds(page, true);
   const text = await page.locator("#view").textContent();
   ["If I skip #1", "If this happens", "Grateful", "What would make today great", "A line to repeat", "Wins", "Lesson", "Choice or autopilot", "Tomorrow", "Highlights", "What I would change"].forEach(function (label) {
@@ -219,29 +236,10 @@ async function keyboard(browser) {
   check("Space closes a fold", !(await todos.evaluate(function (el) { return el.open; })));
   await page.keyboard.press("Enter");
 
-  await page.locator(".todo textarea").first().click();
-  await page.keyboard.press("Control+End");
-  await page.keyboard.type(" now", { delay: 40 });
-  await page.waitForTimeout(300);
-  const typed = await page.evaluate(function () { return { tag: document.activeElement.tagName, value: document.activeElement.value }; });
-  check("typing keeps focus and text", typed.tag === "TEXTAREA" && /draft now$/.test(typed.value), JSON.stringify(typed));
-
-  const box = page.locator(".todo input[type=checkbox]").first();
-  await box.focus();
-  await page.keyboard.press(" ");
-  await page.waitForTimeout(300);
-  const ticked = await page.evaluate(function () { return { type: document.activeElement.type, checked: document.activeElement.checked }; });
-  check("Space ticks and focus stays on the checkbox", ticked.type === "checkbox" && ticked.checked, JSON.stringify(ticked));
-  check("to-do summary follows the tick", (await line(page, "day:todos")) === "To-dos \u00b7 0 left", await line(page, "day:todos"));
-
-  await page.locator(".add-todo").first().click();
-  await page.waitForTimeout(300);
-  const added = await page.evaluate(function () { return { tag: document.activeElement.tagName, n: document.querySelectorAll(".todo").length }; });
-  check("adding a to-do focuses the new box", added.tag === "TEXTAREA" && added.n === 4, JSON.stringify(added));
-  await page.keyboard.type("T".repeat(300));
-  await page.waitForTimeout(300);
-  const sw = await page.evaluate(function () { return document.documentElement.scrollWidth; });
-  check("300-character to-do fits 360px", sw <= 360, String(sw));
+  const todoText = await page.locator('[data-fold="day:todos"] [data-own="todo"]').allTextContents();
+  check("to-dos show as stored", JSON.stringify(todoText.slice(0, 3)) === JSON.stringify(FIXTURE.entries[DAY].todos.map(function (t) { return t.text; })), JSON.stringify(todoText));
+  const marks = await page.locator('[data-fold="day:todos"] .todo .sr-only').allTextContents();
+  check("done state is read out", marks.slice(0, 3).join("|") === "Open: |Done: |Done: ", marks.join("|"));
 
   await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: /^Quarter/ }).click();
   await page.waitForTimeout(300);
@@ -266,64 +264,40 @@ async function keyboard(browser) {
 
 async function reflections(browser) {
   const page = await newPage(browser);
+  await go(page, "#day/2026-10-15");
+  const card = page.locator('#view [data-reflect="day"]');
+  const qid = await card.getAttribute("data-question-id");
+  const stored = (FIXTURE.reflections.answers[qid] || []).map(function (a) { return a.text; });
+  const shown = await card.locator('.reflect-answer').allTextContents();
+  check("day reflection answers show verbatim", JSON.stringify(shown) === JSON.stringify(stored.slice().reverse()) && (stored.length || /No answer yet/.test(await card.textContent())), qid + " " + JSON.stringify(shown));
   await go(page, "#day/" + DAY);
-  const outer = page.locator('[data-fold="day:reflection"]');
-  await outer.locator(".fold-summary").first().click();
-  const all = page.locator('[data-fold="day:reflection-all"]');
-  await all.locator(".fold-summary").first().click();
-  check("opening an inner fold keeps the outer one open", await outer.evaluate(function (el) { return el.open; }));
-  async function save(text) {
-    const box = outer.locator("textarea").first();
-    await box.fill(text);
-    await box.press("Control+Enter");
-    await page.waitForTimeout(250);
-    return page.evaluate(function () { return document.getElementById("announce").textContent; });
-  }
-  check("first answer saves", /^Answer saved/.test(await save("Answer A")));
-  check("second answer saves", /^Answer saved/.test(await save("Answer B")));
-  check("same answer twice is kept once", /already saved/.test(await save("Answer A")));
-  const ops = await page.evaluate(function () {
-    return (JSON.parse(localStorage.getItem("journal-next-ops") || "{}").ops || []).filter(function (o) { return o.type === "appendAnswer"; }).length;
-  });
-  check("two appendAnswer ops queued", ops === 2, String(ops));
-  const history = await outer.locator(".reflect-today").textContent();
-  check("both answers listed", history.indexOf("Answer A") !== -1 && history.indexOf("Answer B") !== -1);
+  const today = await page.locator('#view [data-reflect="day"]').getAttribute("data-question-id");
+  check("day reflection picks a question", /^q\d$/.test(today || ""), today);
 
   await go(page, "#year/2026");
-  const year = page.locator('[data-fold="year:reflection:2026"]');
-  check("year reflection digest exists", (await year.count()) === 1);
-  check("year reflection digest is read-only", (await year.locator("textarea").count()) === 0);
+  const year = page.locator('#view [data-reflect="year"]');
+  check("year reflection digest is on the year view", (await year.count()) === 1 && !(await year.evaluate(function (el) { return !!el.closest("details"); })));
+  const digest = await year.locator(".reflect-answer").allTextContents();
+  check("year digest shows Dong's answers verbatim", ["Write a book on Portuguese law for engineers.", "That he was kind and kept his word.", "Yes!"].every(function (t) { return digest.indexOf(t) !== -1; }), JSON.stringify(digest));
   await page.context().close();
 }
 
-async function saving(browser) {
+async function readOnly(browser) {
   const page = await newPage(browser, { token: true });
+  for (const hash of ROUTES) {
+    await go(page, hash);
+    await setFolds(page, true);
+  }
   await go(page, "#day/" + DAY);
-  await page.locator('[data-fold="day:reflection"] .fold-summary').first().click();
-  const box = page.locator('[data-fold="day:reflection"] textarea').first();
-  await box.fill("Saved through GitHub");
-  await box.press("Control+Enter");
-  await page.locator('[data-fold="day:todos"] .fold-summary').first().click();
-  await page.locator(".todo input[type=checkbox]").first().click();
-  await page.waitForFunction(function () { return document.getElementById("sync-label").textContent === "Saved"; }, null, { timeout: 15000 });
-  check("one PUT for both edits", page.puts.length === 1, String(page.puts.length));
-  const saved = JSON.parse(Buffer.from(page.puts[0].content, "base64").toString("utf8"));
-  const expected = JSON.parse(FIXTURE_TEXT);
-  expected.entries[DAY].todos[0].done = true;
-  delete expected.entries[DAY].updatedAt;
+  await page.waitForFunction(function () { return document.getElementById("sync-label").textContent === "Synced"; }, null, { timeout: 15000 });
+  check("sync reads the file", true);
+  check("no write requests at all", !page.writes.length, page.writes.join("; "));
+  const cached = await page.evaluate(function () { return localStorage.getItem("journal-next-cache"); });
   const problems = [];
-  diffs(saved, expected, "", problems);
-  check("saved file keeps every stored field", !problems.length, problems.slice(0, 5).join("; "));
-  const before = FIXTURE.reflections.answers || {};
-  const after = saved.reflections.answers || {};
-  let kept = true;
-  Object.keys(before).forEach(function (id) {
-    if (JSON.stringify((after[id] || []).slice(0, before[id].length)) !== JSON.stringify(before[id])) kept = false;
-  });
-  check("older answers kept in order", kept);
-  const flat = JSON.stringify(after);
-  check("new answer appended", flat.indexOf("Saved through GitHub") !== -1);
-  check("PUT sends the sha it read", page.puts[0].sha === "abc123", page.puts[0].sha);
+  diffs(JSON.parse(cached), FIXTURE, "", problems);
+  check("cached copy keeps every stored field", !problems.length, problems.slice(0, 5).join("; "));
+  check("no ops queue is created", (await page.evaluate(function () { return localStorage.getItem("journal-next-ops"); })) === null);
+  check("no page errors while syncing", !page.errors.length, page.errors.join("; "));
   await page.context().close();
 }
 
@@ -367,7 +341,7 @@ async function main() {
     await keyboard(browser);
     await reflections(browser);
     await links(browser);
-    if (!process.env.BASE) await saving(browser);
+    if (!process.env.BASE) await readOnly(browser);
   } finally {
     await browser.close();
     if (server) server.kill();

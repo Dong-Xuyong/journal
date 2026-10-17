@@ -5,17 +5,9 @@
   var MONTH_COUNT = 6;
   var HEAT_WEEKS = 53;
   var HISTORY_DAYS = 1826;
-  var BODY = {
-    training: true,
-    food_logged: true,
-    weigh_in: true,
-    sunlight: true,
-    protein_breakfast: true
-  };
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var SVG = "http://www.w3.org/2000/svg";
-  var HEALTH = "https://dong-xuyong.github.io/health/";
 
   function node(tag, className, text) {
     var el = document.createElement(tag);
@@ -270,7 +262,6 @@
     var phrase = label + " \u00b7 " + days + " \u00b7 best " + best + " \u00b7 today " + statusText(status);
     var row = node("div", "streak-row" + (selected === def.id ? " on" : ""));
     var open = button("habit-open");
-    var link;
     var emoji = node("span", "habit-emoji", def.emoji || "");
     row.setAttribute("data-habit", def.id);
     row.setAttribute("data-streak", String(current));
@@ -286,13 +277,6 @@
       onSelect(selected === def.id ? "" : def.id, "tile:");
     });
     row.appendChild(open);
-    if (BODY[def.id]) {
-      link = node("a", "habit-health", "Health");
-      link.href = HEALTH;
-      link.setAttribute("aria-label", "Health for " + label);
-      link.setAttribute("data-focus", "link:" + def.id);
-      row.appendChild(link);
-    }
     return row;
   }
 

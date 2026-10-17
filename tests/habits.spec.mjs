@@ -117,7 +117,7 @@ function harness(data) {
     };
   </script>
   <script src="/journal/js/data.js"></script>
-  <script src="/journal/js/ops.js"></script>
+  <script src="/journal/js/sync.js"></script>
   <script src="/journal/js/ui.js"></script>
   <script>
     JournalData.load(JSON.parse(window.__seal));
@@ -363,7 +363,7 @@ function reflectHarness() {
   <div id="announce" class="sr-only" aria-live="polite"></div>
   <script>localStorage.setItem("journal-next-cache", ${JSON.stringify(json)});</script>
   <script src="/journal/js/data.js"></script>
-  <script src="/journal/js/ops.js"></script>
+  <script src="/journal/js/sync.js"></script>
   <script src="/journal/js/ui.js"></script>
   <script src="/journal/js/views/reflect.js"></script>
   <script>
@@ -374,7 +374,7 @@ function reflectHarness() {
       if (mode === "year") JournalReflect.mount(slot, { mode: "year", year: "2026" });
       else JournalReflect.mount(slot, { mode: "day", day: "2026-10-17" });
     };
-    JournalOps.onChange(function () { window.__show(window.__mode); });
+    JournalSync.onChange(function () { window.__show(window.__mode); });
     window.__show("day");
   </script>
 </body>
@@ -389,72 +389,33 @@ async function reflections(browser, origin) {
   page.on("pageerror", function (err) { errors.push(String(err)); });
   await page.goto(origin + "/reflect.html", { waitUntil: "networkidle" });
   assert.deepEqual(errors, []);
-  const outer = page.locator("[data-fold='day:reflection']");
+  const outer = page.locator("[data-card='day:reflection']");
   await outer.waitFor();
-  assert.equal(await outer.locator(".fold-bar").first().locator(".fold-emoji").textContent(), "🪞");
-  assert.match(await outer.locator(".fold-line").first().innerText(), /^Reflection · today: Q\d · \d+ answered$/);
-  assertNoXScroll(await scrollWidth(page), "reflect closed");
-  await axe(page, "reflect axe closed");
-  const closedHeight = await outer.evaluate(function (el) { return el.getBoundingClientRect().height; });
-  assert.ok(closedHeight <= 48, "reflection fold " + closedHeight);
-  await outer.locator(".fold-summary").first().click();
-  const box = outer.locator("textarea").first();
-  const save = outer.locator(".reflect-save").first();
-  assert.equal(await box.getAttribute("rows"), "4");
-  const saveBox = await save.boundingBox();
-  assert.ok(saveBox && saveBox.height >= 31.5 && saveBox.height <= 36, "save height " + (saveBox && saveBox.height));
-  assert.ok(saveBox && saveBox.width >= 31.5, "save width");
-  await page.locator("[data-fold='day:reflection-all'] .fold-summary").first().click();
-  const innerEmoji = await page.$$eval("#view .fold-summary", function (nodes) {
-    return nodes.filter(function (el) {
-      var fold = el.closest(".fold");
-      return fold && fold.getAttribute("data-fold") !== "day:reflection";
-    }).map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
-  });
-  assert.ok(innerEmoji.length >= 3, "inner folds " + innerEmoji.length);
-  innerEmoji.forEach(function (count) { assert.equal(count, 0); });
+  assert.equal(await outer.locator(".jn-card-title .fold-emoji").textContent(), "🪞");
+  assert.equal(await outer.locator(".jn-card-line").innerText(), "Reflection");
+  assert.equal(await outer.evaluate(function (el) { return !!el.closest("details"); }), false, "reflection is not hidden in a fold");
+  assert.equal(await page.locator("#view textarea, #view input, #view button").count(), 0, "reflection is read-only");
+  assertNoXScroll(await scrollWidth(page), "reflect day");
+  await axe(page, "reflect axe day");
+  const emojiCount = await outer.locator(".fold-emoji").count();
+  assert.equal(emojiCount, 1);
   const questions = await page.locator(".reflect-question").allTextContents();
-  assert.ok(questions.indexOf("Really?") !== -1, questions.join(" | "));
-  assert.ok(questions.indexOf("Ship it. Then rest") !== -1, questions.join(" | "));
   questions.forEach(function (text) { assert.equal(text.indexOf("!"), -1, text); });
-  assert.ok((await page.locator("[data-own]").allTextContents()).indexOf("Yes!") !== -1);
-  await save.click();
-  const note = outer.locator(".reflect-note").first();
-  assert.equal(await note.textContent(), "Write an answer first.");
-  const noteColor = await note.evaluate(function (el) { return getComputedStyle(el).color; });
-  assert.equal(/rgba?\(\s*159\s*,\s*18\s*,\s*57|rgba?\(\s*185\s*,\s*28\s*,\s*28|rgba?\(\s*220\s*,\s*38\s*,\s*38/.test(noteColor), false, noteColor);
-  await box.fill("Answer A");
-  await box.press("Control+Enter");
-  await page.waitForTimeout(80);
-  await box.fill("Answer B");
-  await box.press("Control+Enter");
-  await page.waitForTimeout(80);
-  let own = await page.locator(".reflect-today [data-own]").allTextContents();
-  assert.equal(own.filter(function (text) { return text === "Answer A"; }).length, 1);
-  assert.equal(own.filter(function (text) { return text === "Answer B"; }).length, 1);
-  await box.fill("Answer A");
-  await box.press("Control+Enter");
-  await page.waitForTimeout(80);
-  assert.match(await page.locator("#announce").innerText(), /already saved/);
-  own = await page.locator(".reflect-today [data-own]").allTextContents();
-  assert.equal(own.filter(function (text) { return text === "Answer A"; }).length, 1, own.join(" | "));
-  assert.equal(own.filter(function (text) { return text === "Answer B"; }).length, 1, own.join(" | "));
-  const savedNote = await outer.locator(".reflect-note").first().textContent();
-  assert.equal(savedNote, "That answer is already saved.");
+  assert.ok(questions.indexOf("Really?") !== -1 || questions.indexOf("Ship it. Then rest") !== -1, questions.join(" | "));
   assertNoXScroll(await scrollWidth(page), "reflect open");
   await axe(page, "reflect axe open");
   await page.evaluate(function () { document.documentElement.classList.add("dark"); });
   await page.emulateMedia({ colorScheme: "dark" });
   await axe(page, "reflect axe dark");
   await page.evaluate(function () { window.__show("year"); });
-  const year = page.locator("[data-fold='year:reflection:2026']");
-  assert.equal(await year.locator(".fold-bar").first().locator(".fold-emoji").textContent(), "🪞");
-  assert.equal(await year.locator("textarea").count(), 0);
-  assert.ok((await page.locator("[data-own]").allTextContents()).indexOf("Yes!") !== -1);
-  const yearInner = await page.$$eval("[data-fold='year:reflection:2026'] .fold .fold-summary", function (nodes) {
-    return nodes.map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
-  });
-  yearInner.forEach(function (count) { assert.equal(count, 0); });
+  const year = page.locator("[data-card='year:reflection:2026']");
+  assert.equal(await year.locator(".jn-card-title .fold-emoji").textContent(), "🪞");
+  assert.equal(await year.locator(".fold-emoji").count(), 1);
+  assert.equal(await year.locator("textarea, input, button").count(), 0);
+  assert.equal(await year.locator(".reflect-kicker").textContent(), "1 of 2 questions answered in 2026");
+  assert.ok((await page.locator("[data-own]").allTextContents()).indexOf("Yes!") !== -1, "Dong's answer keeps its own punctuation");
+  assertNoXScroll(await scrollWidth(page), "reflect year");
+  await axe(page, "reflect axe year");
   assert.deepEqual(errors, []);
   await context.close();
   console.log("reflections ok");
@@ -561,8 +522,7 @@ async function main() {
     assertNoXScroll(await scrollWidth(page), "open");
     await axe(page, "axe open");
     assert.equal(await page.locator("text=mirror-secret-xyz").count(), 0);
-    assert.equal(await page.locator("a[href='https://dong-xuyong.github.io/health/']").count(), 5);
-    assert.equal(await page.locator("[data-habit='thesis'] a, [data-habit='speaking'] a").count(), 0);
+    assert.equal(await page.locator("#view a[href*='dong-xuyong.github.io']").count(), 0, "no links to other apps");
 
     const controls = await page.$$eval("button, a[href], summary, [tabindex='0']", function (nodes) {
       return nodes.filter(function (el) {
@@ -691,7 +651,7 @@ async function main() {
     await page.goto(origin + "/harness.html#habits/sunlight", { waitUntil: "networkidle" });
     assert.equal(await page.locator("[data-fold='habit-today']").evaluate(function (el) { return el.open; }), true);
     assert.equal(await page.locator("[data-habit='sunlight'] button").getAttribute("aria-pressed"), "true");
-    assert.equal(await page.locator("[data-habit='sunlight'] a").getAttribute("href"), "https://dong-xuyong.github.io/health/");
+    assert.equal(await page.locator("#view a[href*='dong-xuyong.github.io']").count(), 0, "no links to other apps");
     const othersClosed = await page.$$eval("#view .fold:not([data-fold='habit-today'])", function (nodes) {
       return nodes.every(function (el) { return !el.open; });
     });

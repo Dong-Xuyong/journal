@@ -1,97 +1,32 @@
-/* Reflections. Opaque cards so text stays 4.5:1 on the shell art. */
+/* Reflections. Read-only cards on the main view; opaque so text stays 4.5:1. */
 
-.reflect-fold {
+.reflect-card,
+.reflect-card * {
+  box-sizing: border-box;
+}
+
+.reflect-card {
   max-width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  margin: 0 0 var(--jn-gap, 8px);
-  padding: 3px 10px;
-  background-color: var(--dx-card-solid, #ffffff);
-  color: var(--dx-text, #0d0b08);
   overflow-wrap: anywhere;
 }
 
-.reflect-fold > .fold-bar > .fold-heading {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.reflect-fold > .fold-bar .fold-summary {
-  min-height: var(--jn-row, 40px);
-  height: var(--jn-row, 40px);
-  padding: 0;
-  overflow: hidden;
-  line-height: 1.35;
-}
-
-.reflect-fold .fold-emoji {
-  flex: 0 0 auto;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.reflect-fold,
-.reflect-fold * {
-  box-sizing: border-box;
-}
-
-html.dark .reflect-fold,
-html[data-theme="dark"] .reflect-fold {
-  background-color: var(--dx-card-solid, #1f1f1f);
-  color: var(--dx-text, #efeeec);
+.reflect-kicker,
+.reflect-when {
+  color: var(--jn-muted, #4b453f);
 }
 
 html.dark .reflect-kicker,
 html.dark .reflect-when,
-html.dark .reflect-note,
-html.dark .reflect-count,
 html[data-theme="dark"] .reflect-kicker,
-html[data-theme="dark"] .reflect-when,
-html[data-theme="dark"] .reflect-note,
-html[data-theme="dark"] .reflect-count {
+html[data-theme="dark"] .reflect-when {
   color: var(--jn-muted, #d4d4d4);
 }
 
-.reflect-fold .reflect-fold {
-  margin-top: 8px;
-  box-shadow: none;
-}
-
-.reflect-box:focus-visible,
-.reflect-save:focus-visible {
-  outline: 3px solid var(--dx-accent, #1d4ed8);
-  outline-offset: 2px;
-}
-
-.reflect-kicker,
-.reflect-when,
-.reflect-note,
-.reflect-count {
-  color: var(--jn-muted, #4b453f);
-}
-
-.reflect-kicker,
-.reflect-count,
-.reflect-note {
-  margin: 0 0 8px;
-  font-size: 0.95rem;
+.reflect-kicker {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.reflect-today {
-  min-width: 0;
-}
-
-.reflect-field {
-  display: block;
-  min-width: 0;
-  margin: 0 0 8px;
-  color: inherit;
-  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -112,54 +47,6 @@ html[data-theme="dark"] .reflect-count {
   white-space: pre-wrap;
 }
 
-.reflect-box {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 8px 10px;
-  border: 2px solid var(--dx-muted, #5c574f);
-  border-radius: 10px;
-  background: var(--dx-card-solid, #ffffff);
-  color: var(--dx-text, #0d0b08);
-  font: inherit;
-  font-size: 16px;
-  line-height: 1.4;
-  resize: vertical;
-}
-
-html.dark .reflect-box,
-html[data-theme="dark"] .reflect-box {
-  background: var(--dx-card-solid, #1f1f1f);
-  color: var(--dx-text, #efeeec);
-  border-color: var(--dx-muted, #b8b8b8);
-}
-
-.reflect-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-}
-
-.reflect-save {
-  min-width: var(--jn-tap, 32px);
-  min-height: var(--jn-tap, 32px);
-  height: var(--jn-tap, 32px);
-  padding: 0 12px;
-  border: 2px solid var(--dx-accent, #1d4ed8);
-  border-radius: 10px;
-  background: var(--dx-accent, #1d4ed8);
-  color: var(--dx-accent-fg, #ffffff);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
 .reflect-answers {
   list-style: none;
   margin: 0;
@@ -170,23 +57,22 @@ html[data-theme="dark"] .reflect-box {
   min-width: 0;
   margin: 0 0 8px;
   padding-top: 8px;
-  border-top: 2px solid var(--dx-muted, #5c574f);
+  border-top: 1px solid var(--jn-line, var(--dx-border, #5c574f));
+}
+
+.reflect-answers li:last-child,
+.reflect-answers li:last-child .reflect-answer {
+  margin-bottom: 0;
 }
 
 .reflect-when {
   display: block;
   margin: 0 0 4px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
 .reflect-digest {
   min-width: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reflect-fold,
-  .reflect-fold * {
-    transition: none;
-  }
+  margin-top: 10px;
 }

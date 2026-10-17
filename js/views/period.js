@@ -16,9 +16,9 @@
   };
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var GOAL_ORDER = [
-    { id: "thesis", label: "Thesis", href: "https://dong-xuyong.github.io/thesis/" },
-    { id: "career", label: "Career", href: "" },
-    { id: "health", label: "Health", href: "https://dong-xuyong.github.io/health/" }
+    { id: "thesis", label: "Thesis" },
+    { id: "career", label: "Career" },
+    { id: "health", label: "Health" }
   ];
   var SPECS = {
     week: {
@@ -542,11 +542,6 @@
         block.appendChild(row);
         if (progress) block.appendChild(el("p", "period-prose", show(progress)));
         fold.body.appendChild(block);
-      }
-      if (item.href) {
-        var link = el("a", "period-app", "Open " + item.label);
-        link.href = item.href;
-        fold.body.appendChild(link);
       }
     }
     if (missing.length) fold.body.appendChild(el("p", "period-missing", "Not written yet: " + missing.join(", ") + "."));

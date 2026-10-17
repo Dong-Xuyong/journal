@@ -1,13 +1,11 @@
-/* Shared journal UI: folds, to-dos, citations, and announcements.
-   Every interactive element carries data-focus so the frame can put focus
+/* Shared journal UI: folds, cards, read-only to-dos, citations, and
+   announcements. Fold buttons carry data-focus so the frame can put focus
    back after a re-render. */
 (function (global) {
   "use strict";
 
   var FOLD_KEY = "journal-folds";
   var tipOpen = null;
-  var pendingDelete = Object.create(null);
-  var wantedFocus = null;
   var citeSeq = 0;
 
   function el(tag, className, text) {
@@ -84,16 +82,6 @@
     return prefix + "-" + String(id == null ? "" : id).replace(/[^A-Za-z0-9_-]+/g, "-");
   }
 
-  function wantFocus(key) {
-    wantedFocus = key || null;
-  }
-
-  function takeFocus() {
-    var key = wantedFocus;
-    wantedFocus = null;
-    return key;
-  }
-
   // Closed by default. A heading holds a button with aria-expanded that
   // controls the panel, the same pattern as the current app.
   function fold(opts) {
@@ -158,6 +146,31 @@
     });
     apply(readFolds()[id] === true, false);
     return { root: root, body: body, line: lineNode };
+  }
+
+  // Always open: a section heading with one emoji, then the body.
+  function card(opts) {
+    opts = opts || {};
+    var title = String(opts.title || "Section");
+    var level = Number(opts.level);
+    var root = el("section", "card dx-card jn-card");
+    var heading;
+    var emoji;
+    var body = el("div", "jn-card-body");
+    if (!(level >= 2 && level <= 6)) level = 3;
+    heading = el("h" + level, "jn-card-title");
+    heading.id = domId("card", opts.id || title);
+    if (opts.emoji) {
+      emoji = el("span", "fold-emoji", String(opts.emoji));
+      emoji.setAttribute("aria-hidden", "true");
+      heading.appendChild(emoji);
+    }
+    heading.appendChild(el("span", "jn-card-line", title));
+    if (opts.id) root.setAttribute("data-card", String(opts.id));
+    root.setAttribute("aria-labelledby", heading.id);
+    root.appendChild(heading);
+    root.appendChild(body);
+    return { root: root, body: body, heading: heading };
   }
 
   function citation(key) {
@@ -228,181 +241,41 @@
     }, 30);
   }
 
-  function grow(area) {
-    if (!area.offsetParent) return;
-    area.style.height = "auto";
-    area.style.height = Math.max(32, area.scrollHeight) + "px";
-  }
+  var GOAL_STATUS = { none: "Not started", progress: "In progress", done: "Done", paused: "Paused" };
 
   function todoText(todo) {
-    return String(todo && todo.text || "").trim();
+    return String(todo && todo.text != null ? todo.text : "");
   }
 
-  function focusId(key, id, part) {
-    return "todo:" + key + ":" + id + ":" + part;
-  }
-
-  function paintTodos(container, key, opts) {
-    var todos = global.JournalData.todos(key) || [];
-    var list = el("ul", "todo-list");
-    var undoList = el("ul", "undo-list");
-    var add = el("button", "add-todo dx-btn dx-btn--ghost", opts.yearStatus ? "Add a goal" : "Add a to-do");
-    var i;
-    container.textContent = "";
-    for (i = 0; i < todos.length; i++) {
-      if (pendingDelete[key + "\n" + todos[i].id]) continue;
-      list.appendChild(todoItem(container, key, todos[i], opts));
-    }
-    Object.keys(pendingDelete).forEach(function (token) {
-      var pending = pendingDelete[token];
-      var row;
-      var btn;
-      if (!pending || pending.key !== key) return;
-      row = el("li", "undo-row");
-      row.setAttribute("data-own", "todo");
-      row.appendChild(el("span", "", "Deleted " + (pending.text || "a to-do") + "."));
-      btn = el("button", "dx-btn dx-btn--ghost", "Undo");
-      btn.type = "button";
-      btn.setAttribute("aria-label", "Undo delete " + (pending.text || "to-do"));
-      btn.setAttribute("data-focus", "undo:" + token);
-      btn.addEventListener("click", function () {
-        global.clearTimeout(pending.timer);
-        delete pendingDelete[token];
-        announce("Restored " + (pending.text || "to-do") + ".");
-        wantFocus(focusId(key, pending.id, "text"));
-        paintTodos(container, key, opts);
-        global.setTimeout(function () {
-          var target = container.querySelector('[data-focus="' + focusId(key, pending.id, "text") + '"]');
-          if (target) target.focus();
-          takeFocus();
-        }, 0);
-      });
-      row.appendChild(btn);
-      undoList.appendChild(row);
-    });
-    add.type = "button";
-    add.setAttribute("data-focus", "todo-add:" + key);
-    add.addEventListener("click", function () {
-      var todo = { id: uid(), text: "", done: false };
-      if (opts.yearStatus) todo.status = "none";
-      wantFocus(focusId(key, todo.id, "text"));
-      global.JournalOps.todoAdd(key, todo);
-    });
-    if (undoList.childNodes.length) container.appendChild(undoList);
-    if (todos.length) container.appendChild(list);
-    else container.appendChild(el("p", "empty-line", opts.yearStatus ? "No goals yet." : "No to-dos yet."));
-    container.appendChild(add);
-  }
-
-  function todoItem(container, key, todo, opts) {
-    var item = el("li", todo.done ? "todo done" : "todo");
-    var check = el("input", "todo-check");
-    var area = el("textarea");
-    var del = el("button", "del dx-btn dx-btn--ghost", "Delete");
-    var text = todoText(todo);
-    item.setAttribute("data-own", "todo");
-    check.type = "checkbox";
-    check.checked = !!todo.done;
-    check.setAttribute("aria-label", (text || "To-do") + ", done");
-    check.setAttribute("data-focus", focusId(key, todo.id, "check"));
-    area.rows = 1;
-    area.value = todo.text || "";
-    area.setAttribute("data-own", "todo");
-    area.placeholder = opts.yearStatus ? "Write a goal" : "Write a to-do";
-    area.setAttribute("aria-label", text ? "Edit " + text : "New to-do");
-    area.setAttribute("data-focus", focusId(key, todo.id, "text"));
-    del.type = "button";
-    del.setAttribute("aria-label", "Delete " + (text || "to-do"));
-    del.setAttribute("data-focus", focusId(key, todo.id, "del"));
-    check.addEventListener("change", function () {
-      var patch = { done: check.checked };
-      if (opts.yearStatus) patch.status = check.checked ? "done" : "progress";
-      global.JournalOps.todoPatch(key, todo.id, patch);
-    });
-    area.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") event.preventDefault();
-    });
-    area.addEventListener("input", function () {
-      var next = area.value.replace(/\n/g, " ");
-      if (next !== area.value) area.value = next;
-      grow(area);
-      global.JournalOps.todoPatch(key, todo.id, { text: next });
-    });
-    del.addEventListener("click", function () {
-      var token = key + "\n" + todo.id;
-      var pending = pendingDelete[token];
-      if (pending) global.clearTimeout(pending.timer);
-      pendingDelete[token] = {
-        key: key,
-        id: todo.id,
-        text: text || area.value.trim(),
-        timer: global.setTimeout(function () {
-          delete pendingDelete[token];
-          global.JournalOps.todoRemove(key, todo.id);
-        }, 10000)
-      };
-      announce("Deleted " + (text || "to-do") + ". Undo is there for 10 seconds.");
-      wantFocus("undo:" + token);
-      paintTodos(container, key, opts);
-      global.setTimeout(function () {
-        var target = container.querySelector('[data-focus="undo:' + token.replace(/["\\]/g, "\\$&") + '"]');
-        if (target) target.focus();
-        takeFocus();
-      }, 0);
-    });
-    item.appendChild(check);
-    item.appendChild(area);
-    item.appendChild(del);
-    if (opts.yearStatus) item.appendChild(statusGroup(key, todo));
-    global.setTimeout(function () { grow(area); }, 0);
-    return item;
-  }
-
-  function statusGroup(key, todo) {
-    var group = el("div", "year-status");
-    var choices = [
-      ["none", "Not started"],
-      ["progress", "In progress"],
-      ["done", "Done"],
-      ["paused", "Paused"]
-    ];
-    var current = todo.status || "none";
-    var text = todoText(todo) || "goal";
-    group.setAttribute("role", "radiogroup");
-    group.setAttribute("aria-label", "Status for " + text);
-    function choose(value) {
-      wantFocus(focusId(key, todo.id, "status:" + value));
-      global.JournalOps.todoPatch(key, todo.id, { status: value, done: value === "done" });
-    }
-    choices.forEach(function (choice, index) {
-      var btn = el("button", "", choice[1]);
-      var selected = current === choice[0];
-      btn.type = "button";
-      btn.setAttribute("role", "radio");
-      btn.setAttribute("aria-checked", selected ? "true" : "false");
-      btn.setAttribute("data-focus", focusId(key, todo.id, "status:" + choice[0]));
-      btn.tabIndex = selected ? 0 : -1;
-      btn.addEventListener("click", function () { choose(choice[0]); });
-      btn.addEventListener("keydown", function (event) {
-        var next;
-        if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].indexOf(event.key) === -1) return;
-        event.preventDefault();
-        next = event.key === "ArrowRight" || event.key === "ArrowDown" ? (index + 1) % choices.length : (index + choices.length - 1) % choices.length;
-        choose(choices[next][0]);
-      });
-      group.appendChild(btn);
-    });
-    return group;
-  }
-
-  function uid() {
-    return "t" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
-  }
-
+  // Read-only. Dong's text is shown exactly as stored.
   function todoList(container, key, opts) {
+    var goals;
+    var todos;
+    var list;
     opts = opts || {};
-    if (opts.status && !opts.yearStatus) opts.yearStatus = true;
-    paintTodos(container, key, opts);
+    goals = !!(opts.yearStatus || opts.status);
+    todos = (global.JournalData.todos(key) || []).filter(function (todo) { return todoText(todo).trim(); });
+    container.textContent = "";
+    if (!todos.length) {
+      container.appendChild(el("p", "empty-line", goals ? "No goals yet." : "No to-dos yet."));
+      return;
+    }
+    list = el("ul", "todo-list");
+    todos.forEach(function (todo) {
+      var done = todo.done === true || todo.status === "done";
+      var item = el("li", done ? "todo done" : "todo");
+      var mark = el("span", "todo-mark", done ? "\u2713" : "");
+      var text = el("span", "todo-text", todoText(todo));
+      mark.setAttribute("aria-hidden", "true");
+      text.setAttribute("data-own", "todo");
+      item.setAttribute("data-todo", String(todo.id || ""));
+      item.appendChild(mark);
+      item.appendChild(el("span", "sr-only", done ? "Done: " : "Open: "));
+      item.appendChild(text);
+      if (goals && GOAL_STATUS[todo.status]) item.appendChild(el("span", "todo-status", GOAL_STATUS[todo.status]));
+      list.appendChild(item);
+    });
+    container.appendChild(list);
   }
 
   global.JournalUI = {
@@ -417,7 +290,6 @@
     info: info,
     todoList: todoList,
     announce: announce,
-    wantFocus: wantFocus,
-    takeFocus: takeFocus
+    card: card
   };
 })(window);
