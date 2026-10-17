@@ -498,7 +498,8 @@ body.dx .fold > .fold-bar > .fold-heading > .fold-summary {
   line-height: 1.35;
 }
 
-.fold:not(.is-open) > .fold-bar .fold-line {
+.fold > .fold-bar .fold-line {
+  flex: 1 1 auto;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

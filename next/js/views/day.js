@@ -3,8 +3,8 @@
 
   // Day screen. Morning and evening fields stay read-only.
   // Writes go through JournalOps (to-dos only). Folds come from JournalUI.
-  var MOOD = ["\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04"];
-  var ENERGY = ["\uD83E\uDEAB", "\uD83D\uDE34", "\uD83D\uDD0B", "\uD83D\uDCAA", "\u26A1"];
+  // Faces for mood 1–5. None when the score is missing. Energy is always ⚡.
+  var FACES = ["\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04"];
   var APPS = [
     ["Health", "https://dong-xuyong.github.io/health/"],
     ["Study", "https://dong-xuyong.github.io/wiki-flashcards/"],
@@ -23,6 +23,10 @@
 
   function validScore(n) {
     return n === 1 || n === 2 || n === 3 || n === 4 || n === 5;
+  }
+
+  function scoreOrNull(n) {
+    return validScore(n) ? n : null;
   }
 
   function textLines(value, limit) {
@@ -65,22 +69,22 @@
     var i;
     var todo;
     var text;
-    if (lines.length) return { lines: lines, source: "priorities", note: "" };
+    if (lines.length) return { lines: lines, source: "priorities", note: "", own: false };
     lines = textLines(fields.top3, 3);
-    if (lines.length) return { lines: lines, source: "top3", note: "From this morning's top 3." };
+    if (lines.length) return { lines: lines, source: "top3", note: "From this morning's top 3.", own: false };
     for (i = 0; i < todos.length; i++) {
       todo = todos[i];
       text = String(todo && todo.text || "").trim();
       if (text && todo.mit === true) mits.push(text);
     }
     if (mits.length) {
-      return { lines: mits.slice(0, 3), source: "mit", note: "From the most important to-dos." };
+      return { lines: mits.slice(0, 3), source: "mit", note: "From the most important to-dos.", own: true };
     }
-    return { lines: [], source: "none", note: "" };
+    return { lines: [], source: "none", note: "", own: false };
   }
 
   function morningSummary(fields, priorities) {
-    var focus = oneLine(fields.focus);
+    var focus = JournalUI.plain(oneLine(fields.focus));
     var n = priorities.lines.length;
     if (!focus && !n) return "Morning \u00b7 nothing yet";
     return JournalUI.oneLine(["Morning", focus ? "focus: " + JournalUI.clip(focus, 28) : "", n ? countLabel(n, "priority", "priorities") : ""]);
@@ -134,33 +138,31 @@
   }
 
   function addCopy(wrap, text) {
-    wrap.appendChild(el("p", "day-copy", text));
+    wrap.appendChild(el("p", "day-copy", JournalUI.plain(text)));
   }
 
-  function addList(wrap, lines, ordered) {
-    var list = el(ordered ? "ol" : "ul", "day-list");
+  function addList(wrap, lines, ordered, opts) {
+    var list = el(ordered ? "ol" : "ul", opts && opts.className ? opts.className : "day-list");
+    var own = !!(opts && opts.own);
     var i;
-    for (i = 0; i < lines.length; i++) list.appendChild(el("li", "", lines[i]));
+    var item;
+    var text;
+    for (i = 0; i < lines.length; i++) {
+      text = own ? String(lines[i]) : JournalUI.plain(lines[i]);
+      item = el("li", "", text);
+      if (own) item.setAttribute("data-own", "");
+      list.appendChild(item);
+    }
     wrap.appendChild(list);
   }
 
-  function meter(parent, id, label, score, faces) {
-    var row = el("p", "day-meter");
-    var emoji = el("span", "day-emoji", faces[score - 1]);
-    emoji.setAttribute("aria-hidden", "true");
-    row.setAttribute("data-field", id);
-    row.appendChild(emoji);
-    row.appendChild(el("span", "day-meter-text", label + " " + score + " of 5"));
-    parent.appendChild(row);
-  }
-
-  function section(parent, id, title, summary) {
-    var made = JournalUI.fold({ id: id, title: title, level: 3, summary: summary });
+  function makeFold(parent, id, title, summary, emoji) {
+    var made = JournalUI.fold({ id: id, title: title, level: 3, summary: summary, emoji: emoji || "" });
     if (made.root.classList) made.root.classList.add("dx-card", "day-fold");
     made.root.setAttribute("data-fold", id);
     if (made.body && made.body.classList) made.body.classList.add("day-fold-body");
     parent.appendChild(made.root);
-    return made.body;
+    return made;
   }
 
   function mountQuote(parent, key) {
@@ -168,20 +170,23 @@
     var text = "";
     var figure;
     var quoteEl;
+    var body;
     if (typeof quote === "string") text = quote.trim();
     else if (quote && typeof quote.text === "string") text = quote.text.trim();
     if (!text) return;
+    text = JournalUI.plain(text);
     figure = el("figure", "day-quote");
     quoteEl = el("blockquote", "", text);
     figure.appendChild(quoteEl);
-    section(parent, "day:quote", "Quote", JournalUI.oneLine(["Quote", JournalUI.clip(text, 48)])).appendChild(figure);
+    body = makeFold(parent, "day:quote", "Quote", JournalUI.oneLine(["Quote", JournalUI.clip(text, 48)]), "\uD83D\uDCAC").body;
+    body.appendChild(figure);
   }
 
   function mountMorning(parent, fields, todos) {
     var priorities = prioritiesOf(fields, todos);
-    var body = section(parent, "day:morning", "Morning", morningSummary(fields, priorities));
+    var body = makeFold(parent, "day:morning", "Morning", morningSummary(fields, priorities), "\uD83C\uDF05").body;
     var missing = [];
-    var focus = oneLine(fields.focus);
+    var focus = JournalUI.plain(oneLine(fields.focus));
     var grateful = textLines(fields.grateful);
     var wrap;
     if (focus) addCopy(field(body, "focus", "Focus"), focus);
@@ -189,7 +194,7 @@
     if (priorities.lines.length) {
       wrap = field(body, "priorities", "Priorities");
       wrap.setAttribute("data-priorities-source", priorities.source);
-      addList(wrap, priorities.lines, true);
+      addList(wrap, priorities.lines, true, { className: "day-list day-priorities", own: priorities.own });
       if (priorities.note) wrap.appendChild(el("p", "day-note", priorities.note));
     } else missing.push("priorities");
     if (filled(fields.failureCost)) addCopy(field(body, "failureCost", "If I skip #1", "failure"), String(fields.failureCost).trim());
@@ -249,18 +254,44 @@
     }
   }
 
+  function eveningChips(mood, energy) {
+    var row = el("div", "day-chips");
+    var moodScore = scoreOrNull(mood);
+    var energyScore = scoreOrNull(energy);
+    var moodOpts = { label: "Mood", value: moodScore, max: 5 };
+    var moodChip;
+    var energyChip;
+    if (moodScore) moodOpts.emoji = FACES[moodScore - 1];
+    moodChip = JournalUI.chip(moodOpts);
+    energyChip = JournalUI.chip({ emoji: "\u26A1", label: "Energy", value: energyScore, max: 5 });
+    moodChip.setAttribute("data-field", "mood");
+    energyChip.setAttribute("data-field", "energy");
+    row.appendChild(moodChip);
+    row.appendChild(energyChip);
+    return row;
+  }
+
+  function eveningDots(mood, energy) {
+    var wrap = el("span", "day-eve-dots");
+    wrap.setAttribute("aria-hidden", "true");
+    wrap.appendChild(JournalUI.dots(scoreOrNull(mood), 5, "Mood"));
+    wrap.appendChild(JournalUI.dots(scoreOrNull(energy), 5, "Energy"));
+    return wrap;
+  }
+
   function mountEvening(parent, key, fields) {
     var mood = JournalData.moodOf(key);
     var energy = JournalData.energyOf(key);
-    var body = section(parent, "day:evening", "Evening", eveningSummary(mood, energy, fields));
+    var made = makeFold(parent, "day:evening", "Evening", eveningSummary(mood, energy, fields), "\uD83C\uDF19");
+    var body = made.body;
+    var button = made.root.querySelector(".fold-summary");
     var missing = [];
     var tomorrow = textLines(fields.tomorrow, 3);
-    if (!validScore(mood)) mood = null;
-    if (!validScore(energy)) energy = null;
-    if (mood) meter(body, "mood", "Mood", mood, MOOD);
-    else missing.push("mood");
-    if (energy) meter(body, "energy", "Energy", energy, ENERGY);
-    else missing.push("energy");
+    var line;
+    button.appendChild(eveningDots(mood, energy));
+    body.appendChild(eveningChips(mood, energy));
+    if (!validScore(mood)) missing.push("mood");
+    if (!validScore(energy)) missing.push("energy");
     if (filled(fields.feeling)) addCopy(field(body, "feeling", "Feeling", "feelings"), oneLine(fields.feeling));
     else missing.push("feeling");
     mountWins(body, fields, missing);
@@ -270,7 +301,7 @@
     } else missing.push("choice or autopilot");
     if (tomorrow.length) addList(field(body, "tomorrow", "Tomorrow"), tomorrow, true);
     else missing.push("tomorrow");
-    var line = missingLine(missing);
+    line = missingLine(missing);
     if (line) body.appendChild(line);
   }
 
@@ -314,8 +345,11 @@
     for (i = 0; i < open.length; i++) {
       text = open[i];
       item = el("li", "day-carry");
+      item.appendChild(el("span", "day-carry-mark", "\u21A9\uFE0F"));
+      item.lastChild.setAttribute("aria-hidden", "true");
       item.appendChild(el("span", "day-carry-text", text));
-      button = el("button", "day-add dx-btn dx-btn--ghost", "Add to today");
+      item.lastChild.setAttribute("data-own", "");
+      button = el("button", "day-add dx-btn dx-btn--ghost", "Add");
       button.type = "button";
       button.setAttribute("aria-label", "Add to today: " + text);
       button.setAttribute("data-focus", "carry:" + key + ":" + i);
@@ -333,13 +367,13 @@
   }
 
   function mountTodos(parent, key, todos) {
-    var body = section(parent, "day:todos", "To-dos", todoSummary(todos));
+    var body = makeFold(parent, "day:todos", "To-dos", todoSummary(todos), "\u2705").body;
     if (window.JournalUI && typeof JournalUI.todoList === "function") JournalUI.todoList(body, key, {});
     mountYesterday(body, key);
   }
 
   function mountApps(parent) {
-    var body = section(parent, "day:apps", "Other apps", "Other apps \u00b7 Health, Study, Thesis");
+    var body = makeFold(parent, "day:apps", "Other apps", "Other apps \u00b7 Health, Study, Thesis", "\uD83D\uDD17").body;
     var list = el("ul", "day-apps");
     var i;
     var item;
