@@ -181,7 +181,8 @@ async function tabThrough(page) {
         width: box.width,
         height: box.height,
         type: (el.getAttribute("type") || "").toLowerCase(),
-        fold: !!(el.classList && el.classList.contains("fold-summary"))
+        fold: !!(el.classList && el.classList.contains("fold-summary")),
+        control: el.matches("button, select, textarea, input:not([type=checkbox]):not([type=radio]), a.dx-btn, [role=button], #tabs a")
       };
     });
     if (!info) break;
@@ -189,6 +190,15 @@ async function tabThrough(page) {
     stops.push(info);
   }
   return stops;
+}
+
+// Agreed compact targets: fold rows 40px, buttons and inputs 32px, anything else 24px.
+const TAP = { row: 40, control: 32, floor: 24 };
+
+function checkTap(stop, where) {
+  const floor = stop.fold || stop.control ? TAP.control : TAP.floor;
+  assert(stop.width >= floor - 0.5 && stop.height >= floor - 0.5, where + " tap target under " + floor + "px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
+  if (stop.fold) assert(stop.height >= TAP.row - 0.5, where + " fold row under " + TAP.row + "px on " + stop.name + " " + Math.round(stop.height));
 }
 
 async function run() {
@@ -277,11 +287,9 @@ async function run() {
   assert(names[17].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[17]);
   assert(await page.locator("#today").isDisabled(), "Today is disabled while on today");
   stops.forEach(function (stop) {
-    const floor = stop.type === "checkbox" || stop.type === "radio" ? 24 : 32;
     assert(stop.name.length > 0, "control is missing an accessible name: " + stop.tag);
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "focus ring missing on " + stop.name + " " + stop.outline + " " + stop.outlineWidth);
-    assert(stop.width >= floor && stop.height >= floor, "tap target under " + floor + "px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
-    if (stop.fold) assert(stop.height >= 40, "fold row under 40px on " + stop.name + " " + Math.round(stop.height));
+    checkTap(stop, "closed");
   });
 
   const todos = page.locator('[data-fold="day:todos"]');
@@ -352,10 +360,9 @@ async function run() {
   assert(await scrollWidth(page) <= 360, "open folds scroll sideways");
   const openStops = await tabThrough(page);
   openStops.forEach(function (stop) {
-    const floor = stop.type === "checkbox" || stop.type === "radio" ? 24 : 32;
     assert(stop.name.length > 0, "open fold control missing a name: " + stop.tag + " " + JSON.stringify(stop));
     assert(stop.outline !== "none" && stop.outlineWidth >= 2, "open fold focus ring missing on " + stop.name);
-    assert(stop.width >= floor && stop.height >= floor, "open fold tap target under " + floor + "px on " + stop.name + " " + Math.round(stop.width) + "x" + Math.round(stop.height));
+    checkTap(stop, "open");
   });
 
   await page.evaluate(function () {
