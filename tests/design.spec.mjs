@@ -2,7 +2,7 @@
  * Design pass checks for the rebuilt journal.
  * Helper and frame checks, then the route contract for the day, period, and habits views.
  * Any failure fails the process.
- * Run: node next/tests/design.spec.mjs
+ * Run: node tests/design.spec.mjs
  */
 import { spawn, execSync } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -10,8 +10,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "/tmp/jt/node_modules/playwright/index.mjs";
 import AxeBuilder from "/tmp/jt/node_modules/@axe-core/playwright/dist/index.mjs";
 
-const REPO = fileURLToPath(new URL("../..", import.meta.url)).replace(/\/$/, "");
-const BASE = "http://127.0.0.1:8000/journal/next/";
+const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
+const BASE = process.env.BASE || "http://127.0.0.1:8000/journal/";
 const FIXTURE_TEXT = readFileSync(new URL("./fixture.json", import.meta.url), "utf8");
 const ROUTES = ["#day/2026-10-17", "#day/2026-10-10", "#day/2026-10-14", "#week/2026-W42", "#month/2026-10", "#quarter/2026-Q4", "#year/2026", "#habits", "#habits/thesis"];
 const SHOTS = "/opt/cursor/artifacts/screenshots";

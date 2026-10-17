@@ -1,7 +1,7 @@
 /* Apply a scripted to-do and reflection session to a local journal.json.
    Prints "nothing lost" when every original path is still present and the
    only changes are the edited to-dos, the new answers, and updatedAt on the
-   touched entry. Usage: node next/tools/verify-roundtrip.mjs <journal.json> */
+   touched entry. Usage: node tools/verify-roundtrip.mjs <journal.json> */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -159,7 +159,7 @@ function ranAsMain() {
 function main() {
   var file = process.argv[2];
   if (!file || file.indexOf("--") === 0) {
-    console.error("Usage: node next/tools/verify-roundtrip.mjs <journal.json>");
+    console.error("Usage: node tools/verify-roundtrip.mjs <journal.json>");
     process.exit(1);
   }
   var original = JSON.parse(readFileSync(file, "utf8"));

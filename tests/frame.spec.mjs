@@ -1,12 +1,12 @@
 import { spawn, execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const REPO = fileURLToPath(new URL("../..", import.meta.url)).replace(/\/$/, "");
+const REPO = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 import { chromium } from "/tmp/jt/node_modules/playwright/index.mjs";
 import AxeBuilder from "/tmp/jt/node_modules/@axe-core/playwright/dist/index.mjs";
 
 const DAY = "2026-10-17";
-const BASE = "http://127.0.0.1:8000/journal/next/";
+const BASE = "http://127.0.0.1:8000/journal/";
 const DAY_URL = BASE + "#day/" + DAY;
 const HABITS_URL = BASE + "#habits";
 
