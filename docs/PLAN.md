@@ -157,7 +157,7 @@ mkdir -p /tmp/site/ui && ln -sfn "$PWD" /tmp/site/journal && curl -so /tmp/site/
   - Ticking a to-do puts exactly one operation in the queue, the status reads "Saving…" then "Saved", and the PUT is a deep superset of the fixture.
 
 **Builder 3 — Day view.** Owns `next/js/views/day.js` and `next/css/day.css`.
-- **Quote:** `quotes[day].text` as a `<figure><blockquote>`, outside the folds, only when present.
+- **Quote:** `quotes[day]` stays in the file. The Day view does not render it.
 - **Morning** fold: `focus`, priorities (falling back to `top3`, then to-dos marked `mit`, with a source note), `failureCost`, `ifThen`, `grateful`, and any older `makeGreat` and `affirmation`. Summary: "Morning · focus: X · N priorities".
 - **Evening** fold: mood and energy from `moodOf` and `energyOf`, written as "Mood 4 of 5" with emoji `aria-hidden`; `feeling`; "Wins" (`wins` + `highlights`); "Lesson" (`lesson` + `better`) with a Study link; `chosenVsMomentum`; `tomorrow`. Summary: "Evening · mood 4 / energy 4 · 2 wins".
 - **Reflection:** a fold slot for `JournalReflect.mount(slot, {mode: "day", day})`.

@@ -18,6 +18,7 @@ Presentation only. The `journal.json` shape does not change, stored text is not 
    - dates: `YYYY-MM-DD`, `28 Oct`, `28 October 2026`, `Oct 28`, `28/10/2026`
    - a deadline phrase — `expires`, `due`, or `deadline`, plus a date — as one chip, for example `expires 28 Oct`
 6. **Dashed lines are lists.** Any rendered field whose lines start with `- ` is a real list. The marker is not shown. The words after it stay verbatim. To-dos and reflection answers are Dong's own text and are not rewritten.
+7. **No Quote card.** Do not render `quotes` on the Day view or on any other view. Leave the `quotes` object in `journal.json` as stored. `JournalData.quote` may still read it.
 
 # Journal next — design pass briefs
 
@@ -25,7 +26,7 @@ Dong's feedback on the Day view (Oct 17 2026), applied to all of `next/`, Journa
 
 1. **Compact cards.** Tighter padding, smaller row height.
 2. **No red text** except real errors.
-3. **One emoji per fold,** for example Quote 💬, Mood 🙂, Morning 🌅, Evening 🌙, Reflection 🪞, To-dos ✅. Morning sub-headings are the exception in the section above.
+3. **One emoji per fold,** for example Mood 🙂, Morning 🌅, Evening 🌙, Reflection 🪞, To-dos ✅. Morning sub-headings are the exception in the section above. The Day view does not render a Quote fold.
 4. **No exclamation points** in UI copy or in the generated text the page shows.
 5. **New visuals:** mood and energy chips, and small progress dots instead of big rings or big numbers.
 
@@ -100,7 +101,6 @@ Emoji map (one per fold; rows inside a fold get at most one each):
 
 | View | Fold or row | Emoji |
 |---|---|---|
-| Day | Quote | 💬 |
 | Day | Morning | 🌅 |
 | Day | Evening | 🌙 |
 | Day | Mood chip | the face for the score: 😞 😕 😐 🙂 😄 (none if not logged) |
@@ -192,7 +192,7 @@ Emoji map (one per fold; rows inside a fold get at most one each):
 **Owns:** `next/js/views/day.js` and `next/css/day.css`.
 
 **Do:**
-- **Emoji:** pass the fold emoji from the map to every `JournalUI.fold` call: Quote 💬, Morning 🌅, Evening 🌙, To-dos ✅, Other apps 🔗.
+- **Emoji:** pass the fold emoji from the map to every `JournalUI.fold` call: Morning 🌅, Evening 🌙, To-dos ✅, Other apps 🔗. Do not render a Quote fold.
   - Reflection 🪞 is set by builder 4 inside `reflect.js`. Leave the slot in `day.js` empty.
 - **Mood and energy chips:** replace the two `.day-meter` rows with one row of two chips at the top of the Evening fold.
   - `chip({emoji: face, label: "Mood", value, max: 5})` and `chip({emoji: "⚡", label: "Energy", value, max: 5})`.
@@ -202,13 +202,13 @@ Emoji map (one per fold; rows inside a fold get at most one each):
 - **Compact fields:** label and value on tight lines (label 0.85rem, 600 weight, muted but still at least 4.5:1). 6px between fields. No info buttons.
 - **"Not written yet: …" line:** neutral muted text, not red or orange.
 - **"Still open from yesterday":** each row is `↩️ text [Add]`, with a 32px Add button.
-- **Text filtering:** run every Grok-written value through `JournalUI.plain()`: quote, focus, priorities, failureCost, ifThen, grateful, makeGreat, affirmation, feeling, wins, lesson, chosenVsMomentum, tomorrow, highlights and better.
+- **Text filtering:** run every Grok-written value through `JournalUI.plain()`: focus, priorities, failureCost, ifThen, grateful, makeGreat, affirmation, feeling, wins, lesson, chosenVsMomentum, tomorrow, highlights and better. `quotes` stay in the file and are not rendered.
   - To-do text comes from `JournalUI.todoList`. It is Dong's own text and is shown unchanged, with the `data-own` marker set by builder 1.
 - **Copy:** keep Robin's labels and summaries exactly. Remove any "!".
 - **Acceptance at 360px, with the fixture:**
   - The Day view with folds closed is at most 760px tall.
   - Every fold summary has one emoji.
-  - "Ship it!" shows as "Ship it.", and "Keep going!" as "Keep going." in both the quote summary and the body.
+  - "Ship it!" shows as "Ship it." The stored quote is not shown.
   - "Call mum!" shows unchanged.
   - The evening chips read "Mood 4 of 5" and "Energy 4 of 5" to a screen reader.
   - `design.spec` passes for `#day/2026-10-17`, `#day/2026-10-10` (empty) and `#day/2026-10-14` (mood only on `days[]`).

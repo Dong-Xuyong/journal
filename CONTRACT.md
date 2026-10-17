@@ -43,7 +43,7 @@ Keys use the same names as the Obsidian notes.
 
 ## Quote of the day
 
-`quotes` is a sibling of `entries`. One object per day key. Grok writes this. The website shows `text` at the top of that day. It is not a field inside the day entry.
+`quotes` is a sibling of `entries`. One object per day key. Grok writes this. The website keeps it and does not render it. It is not a field inside the day entry.
 
 - Put the words in `text`. Attribution can sit at the end of the same string.
 - Set `updatedAt` on the quote object. A newer stamp wins for that day only.

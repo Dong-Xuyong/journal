@@ -173,24 +173,6 @@
     return made;
   }
 
-  function mountQuote(parent, key) {
-    var quote = JournalData.quote(key);
-    var text = "";
-    var figure;
-    var quoteEl;
-    var body;
-    if (typeof quote === "string") text = quote.trim();
-    else if (quote && typeof quote.text === "string") text = quote.text.trim();
-    if (!text) return;
-    text = JournalUI.plain(text);
-    figure = el("figure", "day-quote");
-    quoteEl = el("blockquote");
-    JournalUI.fillText(quoteEl, text, { copyClass: "day-copy", listClass: "day-list" });
-    figure.appendChild(quoteEl);
-    body = makeFold(parent, "day:quote", "Quote", JournalUI.oneLine(["Quote", JournalUI.clip(text, 48)]), "\uD83D\uDCAC").body;
-    body.appendChild(figure);
-  }
-
   function mountMorning(parent, fields, todos) {
     var priorities = prioritiesOf(fields, todos);
     var body = makeFold(parent, "day:morning", "Morning", morningSummary(fields, priorities), "\uD83C\uDF05").body;
@@ -373,7 +355,6 @@
     todos = JournalData.todos(key) || [];
     root.textContent = "";
     view = el("div", "day-view");
-    mountQuote(view, key);
     mountMorning(view, fields, todos);
     mountEvening(view, key, fields);
     mountReflect(view, key);

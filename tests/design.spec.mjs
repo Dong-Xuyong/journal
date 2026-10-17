@@ -321,8 +321,8 @@ async function frame(page) {
   check("own", "320px frame stays one scrolling row", narrow.sw <= 320 && narrow.tabs.height <= 52 && narrow.tabs.right <= 320 && narrow.links.every(function (link) { return Math.abs(link.top - narrow.links[0].top) < 1; }) && narrow.crumbs.every(function (link) { return Math.abs(link.top - narrow.crumbs[0].top) < 1 && link.right <= 320; }) && narrow.period.height <= 160 && narrowRow, JSON.stringify({ sw: narrow.sw, tabs: narrow.tabs, period: narrow.period.height, crumbRights: narrow.crumbs.map(function (link) { return Math.round(link.right); }) }));
   await page.screenshot({ path: SHOTS + "/journal-320-light-closed.png", fullPage: true });
   await page.setViewportSize({ width: 360, height: 740 });
-  await page.locator('[data-fold="day:quote"] .fold-summary').click();
-  await page.screenshot({ path: SHOTS + "/journal-360-light-quote-open.png", fullPage: true });
+  await page.locator('[data-fold="day:morning"] .fold-summary').click();
+  await page.screenshot({ path: SHOTS + "/journal-360-light-morning-open.png", fullPage: true });
   await page.evaluate(function () {
     document.querySelectorAll("#view .fold").forEach(function (el) { el.open = true; });
   });

@@ -6,7 +6,7 @@ Live: https://dong-xuyong.github.io/journal/
 
 Routes: `#day/YYYY-MM-DD`, `#week/YYYY-Www`, `#month/YYYY-MM`, `#quarter/YYYY-Qn`, `#year/YYYY`, `#habits`, `#habits/<id>`. The old preview at `/journal/next/` redirects here and keeps the hash.
 
-Entries and the quote of the day live in Dong-Xuyong/progress-sync, file journal.json. The quote is `quotes["YYYY-MM-DD"].text`.
+Entries and the quote of the day live in Dong-Xuyong/progress-sync, file journal.json. The quote is `quotes["YYYY-MM-DD"].text`. The page keeps that object and does not show a Quote card.
 
 The page loads that file on open, on focus, and every 60 seconds.
 

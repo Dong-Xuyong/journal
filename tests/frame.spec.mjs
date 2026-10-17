@@ -286,8 +286,7 @@ async function run() {
   assert(names[14].indexOf("Day") === 0, "breadcrumb day, got " + names[14]);
   assert(names[15] === "Previous day", "previous control, got " + names[15]);
   assert(names[16] === "Next day", "next control (Today is disabled on today), got " + names[16]);
-  assert(names[17].indexOf("Quote") === 0, "quote fold follows next, got " + names[17]);
-  assert(names[18].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[18]);
+  assert(names[17].indexOf("Morning") === 0, "morning fold follows next, got " + names[17]);
   assert(await page.locator("#today").isDisabled(), "Today is disabled while on today");
   stops.forEach(function (stop) {
     assert(stop.name.length > 0, "control is missing an accessible name: " + stop.tag);
