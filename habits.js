@@ -30,14 +30,22 @@
     tipOpen = null;
   }
 
+  var tipSeq = 0;
+
   function infoButton(citeKey) {
     var cite = JournalGamify.cite(citeKey);
     var wrap = node("span", "info-wrap");
-    var btn = button("info-btn", "\u24D8");
+    var btn = button("info-btn");
     var tip = node("span", "info-tip");
-    btn.setAttribute("aria-label", cite.title + ". " + cite.text);
+    var mark = node("span", "", "\u24D8");
+    var tipId = "htip-" + (++tipSeq);
+    mark.setAttribute("aria-hidden", "true");
+    btn.appendChild(mark);
+    btn.appendChild(node("span", "visually-hidden", "About " + cite.title + ". " + cite.text));
     btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", tipId);
     btn.setAttribute("data-cite", citeKey);
+    tip.id = tipId;
     tip.hidden = true;
     tip.setAttribute("role", "tooltip");
     tip.appendChild(node("b", "", cite.title));
@@ -70,15 +78,36 @@
     }
   }
 
-  function rememberFold(el, id) {
-    el.setAttribute("data-fold", id);
-    el.open = readFolds()[id] === true;
-    el.addEventListener("toggle", function () {
-      var data = readFolds();
-      if (el.open) data[id] = true;
-      else delete data[id];
-      localStorage.setItem(FOLD_KEY, JSON.stringify(data));
+  function wireFold(section, id) {
+    var btn = section.querySelector(".fold-summary");
+    var panel = section.querySelector(".fold-panel");
+    function apply(next, save) {
+      btn.setAttribute("aria-expanded", next ? "true" : "false");
+      panel.hidden = !next;
+      section.classList.toggle("is-open", next);
+      if (save) {
+        var data = readFolds();
+        if (next) data[id] = true;
+        else delete data[id];
+        localStorage.setItem(FOLD_KEY, JSON.stringify(data));
+      }
+      if (next) section.dispatchEvent(new Event("foldopen"));
+    }
+    section.setAttribute("data-fold", id);
+    apply(readFolds()[id] === true, false);
+    btn.addEventListener("click", function () {
+      apply(btn.getAttribute("aria-expanded") !== "true", true);
     });
+    Object.defineProperty(section, "open", {
+      configurable: true,
+      get: function () { return btn.getAttribute("aria-expanded") === "true"; },
+      set: function (value) { apply(!!value, true); }
+    });
+    section.appendChild = function (child) { return panel.appendChild(child); };
+    section.insertBefore = function (child, ref) {
+      if (ref && panel.contains(ref)) return panel.insertBefore(child, ref);
+      return panel.insertBefore(child, panel.firstChild);
+    };
   }
 
   function oneLine(parts) {
@@ -91,11 +120,23 @@
   }
 
   function startFold(id, line, extra) {
-    var section = node("details", "card dx-card fold" + (extra ? " " + extra : ""));
-    var summary = node("summary", "fold-summary");
+    var section = node("section", "card dx-card fold" + (extra ? " " + extra : ""));
+    var bar = node("div", "fold-bar");
+    var heading = node("h3", "fold-heading");
+    var summary = button("fold-summary");
+    var panelId = "panel-" + String(id).replace(/[^A-Za-z0-9_-]+/g, "-");
+    var panel = node("div", "fold-panel");
+    heading.id = panelId + "-label";
     summary.appendChild(node("span", "fold-line", line));
-    section.appendChild(summary);
-    rememberFold(section, id);
+    summary.setAttribute("aria-controls", panelId);
+    heading.appendChild(summary);
+    panel.id = panelId;
+    panel.hidden = true;
+    section.setAttribute("aria-labelledby", heading.id);
+    bar.appendChild(heading);
+    section.appendChild(bar);
+    section.appendChild(panel);
+    wireFold(section, id);
     return section;
   }
 
@@ -281,6 +322,8 @@
     var fill = node("i");
     var wins = cycle.wins === 1 ? "1 win" : cycle.wins + " wins";
     ring.style.setProperty("--p", String(Math.round(Math.min(1, board.done / board.total) * 100)));
+    ring.setAttribute("role", "img");
+    ring.setAttribute("aria-label", board.done + " of " + board.total + " habits" + (board.win ? ", win day" : board.logged ? ", not a win yet" : ", nothing logged"));
     ring.setAttribute("data-done", String(board.done));
     ring.setAttribute("data-win", board.win ? "1" : "0");
     figure.appendChild(node("strong", "", String(board.done)));
@@ -296,6 +339,8 @@
       copy.appendChild(node("p", "habit-note cycle-wins", wins + " so far"));
     }
     fill.style.setProperty("--v", Math.round(cycle.progress * 100) + "%");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", "Cycle " + Math.round(cycle.progress * 100) + " percent through");
     bar.appendChild(fill);
     copy.appendChild(bar);
     copy.setAttribute("data-cycle-day", String(cycle.day));
@@ -326,6 +371,8 @@
     level.appendChild(node("b", "", "Level " + xp.level));
     level.appendChild(node("span", "", xp.xp + " points"));
     fill.style.setProperty("--v", Math.round((xp.into / xp.need) * 100) + "%");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", xp.into + " of " + xp.need + " points to the next level");
     bar.appendChild(fill);
     section.appendChild(level);
     section.appendChild(bar);
@@ -374,9 +421,12 @@
       tile.setAttribute("data-best", String(best));
       tile.setAttribute("data-status", status);
       tile.setAttribute("data-linchpin", linchpin ? "1" : "0");
+      var habitName = node("span", "habit-label", def.label);
+      habitName.id = "habit-name-" + def.id;
+      tile.setAttribute("aria-labelledby", habitName.id);
       open.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
       open.appendChild(node("span", "habit-emoji", def.emoji));
-      open.appendChild(node("span", "habit-label", def.label));
+      open.appendChild(habitName);
       open.appendChild(node("span", "habit-streak", String(current)));
       open.appendChild(node("span", "habit-streak-lbl", current > 1 ? "days in a row" : "day streak"));
       open.appendChild(node("span", "best", "Best " + best));
@@ -395,6 +445,8 @@
       }
       JournalGamify.milestoneStates(best).forEach(function (item) {
         var badge = node("span", "badge" + (item.unlocked ? " on" : ""), String(item.days));
+        badge.setAttribute("role", "img");
+        badge.setAttribute("aria-label", item.days + " day mark, " + (item.unlocked ? "reached" : "not yet"));
         badge.setAttribute("data-days", String(item.days));
         badge.setAttribute("data-unlocked", item.unlocked ? "1" : "0");
         badges.appendChild(badge);
@@ -413,7 +465,9 @@
 
   function legendItem(className, text) {
     var item = node("span", "legend-item");
-    item.appendChild(node("i", className));
+    var swatch = node("i", className);
+    swatch.setAttribute("aria-hidden", "true");
+    item.appendChild(swatch);
     item.appendChild(node("span", "", text));
     return item;
   }
@@ -430,7 +484,11 @@
     legend.appendChild(legendItem("hcell none", "Not logged"));
     legend.appendChild(legendItem("hcell unknown", "Not marked"));
     legend.appendChild(node("span", "legend-label", "Less"));
-    [0, 1, 2, 3, 4, 5].forEach(function (n) { legend.appendChild(node("i", "hcell lv" + n)); });
+    [0, 1, 2, 3, 4, 5].forEach(function (n) {
+      var swatch = node("i", "hcell lv" + n);
+      swatch.setAttribute("aria-hidden", "true");
+      legend.appendChild(swatch);
+    });
     legend.appendChild(node("span", "legend-label", "More"));
     return legend;
   }
@@ -475,6 +533,7 @@
         if (day === today) cell.classList.add("today");
         cell.setAttribute("data-day", day);
         cell.setAttribute("aria-label", info.text);
+        if (cell.tagName !== "BUTTON") cell.setAttribute("role", "img");
         if (day <= today && cell.tagName === "BUTTON") {
           cell.addEventListener("click", function () { detail.textContent = info.text; });
           cell.addEventListener("mouseenter", function () { detail.textContent = info.text; });
@@ -504,9 +563,7 @@
       });
     }
     if (section.open) scrollHeat();
-    section.addEventListener("toggle", function () {
-      if (section.open) scrollHeat();
-    });
+    section.addEventListener("foldopen", scrollHeat);
     return section;
   }
 
@@ -605,7 +662,7 @@
     }
     svg.setAttribute("viewBox", "0 0 360 148");
     svg.setAttribute("class", "trend-svg");
-    svg.setAttribute("role", "img");
+    svg.setAttribute("role", "group");
     [0, 0.5, 1].forEach(function (mark) {
       var y = round(yAt(mark));
       var line = svgEl("line");
@@ -658,8 +715,15 @@
     head.appendChild(node("b", "", pct(headline.rate)));
     head.appendChild(document.createTextNode(focus ? " " + focus.label + " \u00b7 last " + noun : " of all habits \u00b7 last " + noun));
     section.appendChild(head);
-    chart.svg.setAttribute("aria-label", (kind === "week" ? "Weekly" : "Monthly") + " completion, " + pct(headline.rate) + (focus ? " for " + focus.label : " for all habits") + ".");
+    var chartName = (kind === "week" ? "Weekly" : "Monthly") + " completion, " + pct(headline.rate) + (focus ? " for " + focus.label : " for all habits") + ".";
+    var chartSummary = node("ul", "visually-hidden");
+    chart.svg.setAttribute("aria-label", chartName);
+    chartSummary.setAttribute("aria-label", chartName);
+    series.forEach(function (item) {
+      chartSummary.appendChild(node("li", "", describePeriod(item, defs, selected)));
+    });
     section.appendChild(chart.svg);
+    section.appendChild(chartSummary);
     labels.style.setProperty("--n", String(series.length));
     series.forEach(function (item, index) {
       var mid = Math.floor((series.length - 1) / 2);

@@ -73,14 +73,22 @@
     tipOpen = null;
   }
 
+  var tipSeq = 0;
+
   function infoButton(citeKey) {
     var cite = JournalGamify.cite(citeKey);
     var wrap = node("span", "info-wrap");
-    var btn = button("info-btn", "\u24D8");
+    var btn = button("info-btn");
     var tip = node("span", "info-tip");
-    btn.setAttribute("aria-label", cite.title + ". " + cite.text);
+    var mark = node("span", "", "\u24D8");
+    var tipId = "jtip-" + (++tipSeq);
+    mark.setAttribute("aria-hidden", "true");
+    btn.appendChild(mark);
+    btn.appendChild(node("span", "visually-hidden", "About " + cite.title + ". " + cite.text));
     btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", tipId);
     btn.setAttribute("data-cite", citeKey);
+    tip.id = tipId;
     tip.hidden = true;
     tip.setAttribute("role", "tooltip");
     tip.appendChild(node("b", "", cite.title));
@@ -212,6 +220,8 @@
     els.completion.textContent = "";
     ring = node("div", "ring");
     ring.style.setProperty("--p", String(todos.length ? Math.round((done * 100) / todos.length) : 0));
+    ring.setAttribute("role", "img");
+    ring.setAttribute("aria-label", done + " of " + todos.length + " to-dos done");
     els.completion.appendChild(ring);
     els.completion.appendChild(node("span", "", filled + " of " + total + " \u00b7 " + done + " of " + todos.length + " to-dos"));
   }
@@ -238,16 +248,43 @@
     }
   }
 
-  function rememberFold(el, id) {
-    el.setAttribute("data-fold", id);
-    el.open = readFolds()[id] === true;
-    el.addEventListener("toggle", function () {
-      var data = readFolds();
-      if (el.open) data[id] = true;
-      else delete data[id];
-      localStorage.setItem(FOLD_KEY, JSON.stringify(data));
-      if (el.open) fitAll();
+  function domId(prefix, id) {
+    return prefix + "-" + String(id == null ? "" : id).replace(/[^A-Za-z0-9_-]+/g, "-");
+  }
+
+  function wireFold(section, id) {
+    var btn = section.querySelector(".fold-summary");
+    var panel = section.querySelector(".fold-panel");
+    function apply(next, save) {
+      btn.setAttribute("aria-expanded", next ? "true" : "false");
+      panel.hidden = !next;
+      section.classList.toggle("is-open", next);
+      if (save) {
+        var data = readFolds();
+        if (next) data[id] = true;
+        else delete data[id];
+        localStorage.setItem(FOLD_KEY, JSON.stringify(data));
+      }
+      if (next) {
+        section.dispatchEvent(new Event("foldopen"));
+        if (typeof fitAll === "function") fitAll();
+      }
+    }
+    section.setAttribute("data-fold", id);
+    apply(readFolds()[id] === true, false);
+    btn.addEventListener("click", function () {
+      apply(btn.getAttribute("aria-expanded") !== "true", true);
     });
+    Object.defineProperty(section, "open", {
+      configurable: true,
+      get: function () { return btn.getAttribute("aria-expanded") === "true"; },
+      set: function (value) { apply(!!value, true); }
+    });
+    section.appendChild = function (child) { return panel.appendChild(child); };
+    section.insertBefore = function (child, ref) {
+      if (ref && panel.contains(ref)) return panel.insertBefore(child, ref);
+      return panel.insertBefore(child, panel.firstChild);
+    };
   }
 
   function oneLine(parts) {
@@ -265,12 +302,25 @@
     return value.slice(0, max - 1).trim() + "\u2026";
   }
 
-  function card(line, extra, foldId) {
-    var section = node("details", "card dx-card fold" + (extra ? " " + extra : ""));
-    var summary = node("summary", "fold-summary");
+  function card(line, extra, foldId, opts) {
+    opts = opts || {};
+    var section = node("section", (opts.plain ? "fold" : "card dx-card fold") + (extra ? " " + extra : ""));
+    var bar = node("div", "fold-bar");
+    var heading = node(opts.level === 4 ? "h4" : opts.level === 5 ? "h5" : "h3", "fold-heading");
+    var summary = button("fold-summary");
+    var panelId = domId("panel", foldId || line);
+    var panel = node("div", "fold-panel");
+    heading.id = panelId + "-label";
     summary.appendChild(node("span", "fold-line", line));
-    section.appendChild(summary);
-    rememberFold(section, foldId || line);
+    summary.setAttribute("aria-controls", panelId);
+    heading.appendChild(summary);
+    panel.id = panelId;
+    panel.hidden = true;
+    section.setAttribute("aria-labelledby", heading.id);
+    bar.appendChild(heading);
+    section.appendChild(bar);
+    section.appendChild(panel);
+    wireFold(section, foldId || line);
     return section;
   }
 
@@ -280,11 +330,14 @@
     var text = node("div");
     var bar = node("span", "bar");
     var fill = node("i");
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label", field.label + " " + value + " out of 5");
     box.appendChild(node("span", "emo", faces[value - 1]));
     text.appendChild(node("span", "lbl", field.label));
     text.appendChild(node("b", "", value + "/5"));
     fill.style.setProperty("--v", value * 20 + "%");
     bar.appendChild(fill);
+    bar.setAttribute("aria-hidden", "true");
     text.appendChild(bar);
     box.appendChild(text);
     return box;
@@ -326,18 +379,29 @@
   function todoBlock(todo, withStatus) {
     var block = node("div");
     var row = node("div", todo.done ? "todo done" : "todo");
+    var field = node("div", "todo-field");
     var check = node("input");
     var text = node("textarea");
-    var del = button("del", "✕");
+    var del = button("del");
+    var delMark = node("span", "", "\u2715");
+    var doneLabel = node("label", "todo-done");
+    var textLabel = node("label", "todo-label", "To-do");
+    var textId = "todo-" + String(todo.id || uid()).replace(/[^A-Za-z0-9_-]+/g, "-");
     var status;
     check.type = "checkbox";
+    check.id = textId + "-done";
     check.checked = !!todo.done;
-    check.setAttribute("aria-label", "Done");
+    doneLabel.htmlFor = check.id;
+    doneLabel.appendChild(check);
+    doneLabel.appendChild(node("span", "", "Done"));
+    text.id = textId;
     text.rows = 1;
     text.value = todo.text || "";
-    text.placeholder = "New to-do…";
-    text.setAttribute("aria-label", "To-do");
-    del.setAttribute("aria-label", "Delete to-do");
+    text.placeholder = "New to-do\u2026";
+    textLabel.htmlFor = textId;
+    delMark.setAttribute("aria-hidden", "true");
+    del.appendChild(delMark);
+    del.appendChild(node("span", "visually-hidden", "Delete to-do"));
     function setDone(done) {
       todo.done = done;
       check.checked = done;
@@ -364,18 +428,24 @@
       block.remove();
       touch();
     });
-    row.appendChild(check);
-    row.appendChild(text);
+    field.appendChild(textLabel);
+    field.appendChild(text);
+    row.appendChild(doneLabel);
+    row.appendChild(field);
     row.appendChild(del);
     block.appendChild(row);
     function markStatus() {
       if (!status) return;
       Array.prototype.forEach.call(status.children, function (el, i) {
-        el.classList.toggle("on", STATUS[i][0] === (todo.status || "none"));
+        var on = STATUS[i][0] === (todo.status || "none");
+        el.classList.toggle("on", on);
+        el.setAttribute("aria-pressed", on ? "true" : "false");
       });
     }
     if (withStatus) {
       status = node("div", "status");
+      status.setAttribute("role", "group");
+      status.setAttribute("aria-label", "Status");
       STATUS.forEach(function (pair) {
         var el = button("", pair[1]);
         el.addEventListener("click", function () {
@@ -450,6 +520,8 @@
 
   function badge(text, on, extra) {
     var el = node("span", "badge" + (on ? " on" : ""), text);
+    el.setAttribute("role", "img");
+    el.setAttribute("aria-label", text + (on ? ", yes" : ", not yet"));
     if (extra) {
       Object.keys(extra).forEach(function (key) { el.setAttribute(key, extra[key]); });
     }
@@ -493,12 +565,15 @@
     return group;
   }
 
-  function spark(span) {
+  function spark(span, summary) {
     var svg = svgEl("svg");
+    var title = svgEl("title");
     svg.setAttribute("viewBox", "0 0 100 36");
     svg.setAttribute("class", "spark");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Mood and energy");
+    svg.setAttribute("aria-label", summary);
+    title.textContent = summary;
+    svg.appendChild(title);
     var base = svgEl("line");
     base.setAttribute("x1", "0");
     base.setAttribute("x2", "100");
@@ -520,8 +595,9 @@
 
   function feelingStat(label, span) {
     var row = node("div", "spark-block");
+    var summary = label + ": mood " + avgText(span.moodAvg) + ", energy " + avgText(span.energyAvg) + ", " + span.logged + " logged";
     row.appendChild(node("span", "spark-label", label));
-    row.appendChild(spark(span));
+    row.appendChild(spark(span, summary));
     row.appendChild(node("p", "spark-stat", "\uD83D\uDE42 " + avgText(span.moodAvg) + " mood \u00b7 \u26A1 " + avgText(span.energyAvg) + " energy \u00b7 " + span.logged + " logged"));
     return row;
   }
@@ -577,6 +653,7 @@
       if (mood) moods.push(mood);
       if (isScore(fields.energy)) energies.push(fields.energy);
       link.href = "#day/" + dayKey;
+      link.setAttribute("aria-label", WEEKDAYS[wd] + " " + dayKey + ", mood " + (mood || "none") + ", energy " + (isScore(fields.energy) ? fields.energy : "none"));
       link.appendChild(node("span", "", WEEKDAYS[wd]));
       link.appendChild(node("span", "emo", mood ? MOOD[mood - 1] : "·"));
       link.appendChild(node("span", "", isScore(fields.energy) ? ENERGY[fields.energy - 1] : "·"));
@@ -649,6 +726,8 @@
     els.completion.textContent = "";
     ring = node("div", "ring");
     ring.style.setProperty("--p", String(Math.round(Math.min(1, play.done / play.total) * 100)));
+    ring.setAttribute("role", "img");
+    ring.setAttribute("aria-label", play.done + " of " + play.total + " habits" + (play.win ? ", win day" : ""));
     els.completion.appendChild(ring);
     status = !play.logged ? "Nothing logged yet" : play.done + "/" + play.total + (play.win ? " \u00b7 win day" : "");
     els.completion.appendChild(node("span", "", status));
@@ -850,13 +929,18 @@
     var next = goal ? String(goal.next || "").trim() : "";
     var score = goal && isScore(goal.score) ? goal.score : null;
     var bar, fill;
+    var title = node("h4", "", label);
     card.setAttribute("data-goal", id);
-    card.appendChild(node("h4", "", label));
+    title.id = domId("goal", id + "-" + cur.key);
+    card.setAttribute("aria-labelledby", title.id);
+    card.appendChild(title);
     if (score) {
       card.appendChild(node("b", "", score + "/5"));
       bar = node("span", "bar");
       fill = node("i");
       fill.style.setProperty("--v", score * 20 + "%");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", label + " score " + score + " out of 5");
       bar.appendChild(fill);
       card.appendChild(bar);
     } else card.appendChild(node("p", "prompt", "Score from 1 to 5."));
@@ -1006,41 +1090,49 @@
     var save = button("dx-btn", "Save");
     var note = node("p", "reflect-note", "");
     var actions = node("div", "reflect-actions");
-    var all = node("details", "fold reflect-all");
-    var allSummary = node("summary", "fold-summary");
+    var questionHeading = node("h4", "reflect-question", question.text);
+    var all = card("All questions", "reflect-all", "day:reflection-all", { plain: true, level: 4 });
     section.setAttribute("data-reflections", "1");
     section.setAttribute("data-question-id", question.id);
     section.setAttribute("data-reflection-index", String(index));
+    questionHeading.id = domId("question-today", question.id);
     section.appendChild(node("p", "reflect-kicker", "Question " + (index + 1) + " of " + questions.length));
-    section.appendChild(node("p", "reflect-question", question.text));
+    section.appendChild(questionHeading);
+    box.id = domId("answer-today", question.id);
     box.rows = 4;
-    box.setAttribute("aria-label", "Your answer");
+    box.setAttribute("aria-labelledby", questionHeading.id);
     box.setAttribute("placeholder", "Write your answer.");
     save.setAttribute("data-save-reflection", question.id);
+    save.setAttribute("aria-label", "Save answer");
+    note.setAttribute("aria-live", "polite");
     actions.appendChild(save);
     actions.appendChild(note);
     section.appendChild(box);
     section.appendChild(actions);
     section.appendChild(reflectionHistory(question.id));
-    allSummary.appendChild(node("span", "fold-line", "All questions"));
-    all.appendChild(allSummary);
-    rememberFold(all, "day:reflection-all");
     questions.forEach(function (item, itemIndex) {
       var block = node("article", "reflect-item");
+      var qHeading = node("h5", "", (itemIndex + 1) + ". " + item.text);
       var itemBox;
       var itemSave;
       var itemNote;
       var itemActions;
+      qHeading.id = domId("question", item.id);
       block.setAttribute("data-question-id", item.id);
-      block.appendChild(node("h4", "", (itemIndex + 1) + ". " + item.text));
+      block.setAttribute("aria-labelledby", qHeading.id);
+      block.appendChild(qHeading);
       block.appendChild(reflectionHistory(item.id));
       if (item.id !== question.id) {
         itemBox = node("textarea", "reflect-box");
+        itemBox.id = domId("answer", item.id);
         itemBox.rows = 3;
-        itemBox.setAttribute("aria-label", "Answer");
+        itemBox.setAttribute("aria-labelledby", qHeading.id);
+        itemBox.setAttribute("placeholder", "Write your answer.");
         itemSave = button("dx-btn dx-btn--ghost", "Save");
         itemSave.setAttribute("data-save-reflection", item.id);
+        itemSave.setAttribute("aria-label", "Save answer to question " + (itemIndex + 1));
         itemNote = node("p", "reflect-note", "");
+        itemNote.setAttribute("aria-live", "polite");
         itemActions = node("div", "reflect-actions");
         itemActions.appendChild(itemSave);
         itemActions.appendChild(itemNote);
