@@ -449,7 +449,8 @@ async function testSaveQueue() {
   assert.equal(second.ops.status(), "pending");
   assert.match(store.getItem("journal-next-ops"), /todoPatch/);
   doc.visibilityState = "hidden";
-  await hidden[0]();
+  hidden[0]();
+  await second.ops.flush();
   assert.equal(state.puts.length, 1);
   assert.equal(state.puts[0].message, "Save journal progress");
   assert.equal(state.puts[0].sha, "sha-1");
@@ -632,7 +633,8 @@ async function testViewport() {
   const server = await startServer("/tmp/site");
   const port = server.address().port;
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 360, height: 740 } });
+  const context = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  const page = await context.newPage();
   const puts = [];
   try {
     await page.route("https://api.github.com/**", async function (route) {
@@ -670,8 +672,16 @@ async function testViewport() {
     assert.ok(await scrollWidth() <= 360, "open scrollWidth " + await scrollWidth());
     await axeSerious(page);
 
+    await page.evaluate(function () {
+      document.body.tabIndex = -1;
+      document.body.focus();
+    });
+    const focusCount = await page.evaluate(function () {
+      return document.querySelectorAll("a[href], summary, input, button").length;
+    });
+    assert.equal(focusCount, 5);
     const seen = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < focusCount; i++) {
       await page.keyboard.press("Tab");
       const info = await page.evaluate(function () {
         const el = document.activeElement;

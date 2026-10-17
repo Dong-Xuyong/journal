@@ -1,6 +1,6 @@
 /* Queued edits for journal.json. A save GETs the remote file, applies only
    the queue, and PUTs that result. It never writes the copy it has in memory,
-   and it never reads or writes the journal-v1 cache. */
+   and it never reads or writes the current app's cache. */
 (function () {
   "use strict";
 
