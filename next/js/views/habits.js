@@ -64,6 +64,32 @@
     return "No log";
   }
 
+  function statusClass(status) {
+    if (status === "done") return "is-done";
+    if (status === "miss") return "is-miss";
+    if (status === "unknown") return "is-unknown";
+    return "is-none";
+  }
+
+  function labelOf(def) {
+    var raw = def && def.label != null ? String(def.label) : "";
+    if (window.JournalUI && typeof JournalUI.plain === "function") return JournalUI.plain(raw);
+    return raw;
+  }
+
+  function mountTodayDots(made, value, max) {
+    var btn;
+    var dots;
+    if (!made || !made.root || !window.JournalUI || typeof JournalUI.dots !== "function") return;
+    btn = made.root.querySelector(".fold-summary");
+    if (!btn) return;
+    dots = JournalUI.dots(value, max, "Done");
+    if (!dots) return;
+    dots.setAttribute("aria-hidden", "true");
+    dots.classList.add("today-dots");
+    btn.appendChild(dots);
+  }
+
   function pct(rate) {
     if (rate == null) return "no log";
     return Math.round(rate * 100) + "%";
@@ -194,19 +220,39 @@
     return MONTHS[Number(key.slice(5, 7)) - 1] + " " + key.slice(2, 4);
   }
 
-  function section(id, title, summary) {
-    var made = JournalUI.fold({ id: id, title: title, level: 3, summary: summary });
+  function ensureFoldEmoji(root, emoji) {
+    var button;
+    var slot;
+    var line;
+    if (!emoji || !root) return;
+    button = root.querySelector(".fold-summary");
+    if (!button || button.querySelector(".fold-emoji")) return;
+    slot = document.createElement("span");
+    slot.className = "fold-emoji";
+    slot.setAttribute("aria-hidden", "true");
+    slot.textContent = emoji;
+    line = button.querySelector(".fold-line");
+    if (line) button.insertBefore(slot, line);
+    else button.appendChild(slot);
+  }
+
+  function section(id, title, summary, emoji) {
+    var opts = { id: id, title: title, level: 3, summary: summary };
+    if (emoji) opts.emoji = emoji;
+    var made = JournalUI.fold(opts);
     made.root.classList.add("habit-fold", "dx-card");
     made.root.setAttribute("data-fold", id);
     if (made.body) made.body.classList.add("habit-body");
+    ensureFoldEmoji(made.root, emoji);
     return made;
   }
 
   function renderToday(defs, today) {
     var day = daySummary(today, defs);
     var line = day.state === "none" ? "Today \u00b7 no log yet" : "Today \u00b7 " + day.done + " of " + defs.length + " done";
-    var made = section("habit-today", "Today", line);
+    var made = section("habit-today", "Today", line, "\uD83D\uDCC5");
     var list = node("ul", "today-list");
+    mountTodayDots(made, day.state === "none" ? null : day.done, defs.length);
     defs.forEach(function (def) {
       var status = JournalData.habitStatus(today, def.id);
       var item = node("li", "today-item");
@@ -214,8 +260,8 @@
       emoji.setAttribute("aria-hidden", "true");
       item.setAttribute("data-today-habit", def.id);
       item.appendChild(emoji);
-      item.appendChild(node("span", "today-name", def.label));
-      item.appendChild(node("span", "today-pill " + status, statusText(status)));
+      item.appendChild(node("span", "today-name", labelOf(def)));
+      item.appendChild(node("span", "today-pill " + statusClass(status), statusText(status)));
       list.appendChild(item);
     });
     made.body.appendChild(list);
@@ -228,7 +274,7 @@
     var made;
     var grid;
     for (i = 0; i < defs.length; i++) if (currentStreak(defs[i].id, today) > 0) onStreak += 1;
-    made = section("habit-streaks", "Streaks", onStreak === 0 ? "Streaks · no streak yet" : onStreak === 1 ? "Streaks · 1 on a streak" : "Streaks · " + onStreak + " on a streak");
+    made = section("habit-streaks", "Streaks", onStreak === 0 ? "Streaks \u00b7 no streak yet" : onStreak === 1 ? "Streaks \u00b7 1 on a streak" : "Streaks \u00b7 " + onStreak + " on a streak", "\uD83D\uDD25");
     grid = node("div", "habit-grid");
     defs.forEach(function (def) {
       grid.appendChild(habitTile(def, today, selected, onSelect));
@@ -241,36 +287,35 @@
     var status = JournalData.habitStatus(today, def.id);
     var current = currentStreak(def.id, today);
     var best = bestStreak(def.id, today);
-    var streakLabel = current === 1 ? "day in a row" : "days in a row";
-    var tile = node("article", "habit-tile" + (selected === def.id ? " on" : ""));
+    var label = labelOf(def);
+    var days = current === 1 ? "1 day" : String(current) + " days";
+    var phrase = label + " \u00b7 " + days + " \u00b7 best " + best + " \u00b7 today " + statusText(status);
+    var row = node("div", "streak-row" + (selected === def.id ? " on" : ""));
     var open = button("habit-open");
-    var name;
+    var link;
     var emoji = node("span", "habit-emoji", def.emoji || "");
-    tile.setAttribute("data-habit", def.id);
-    tile.setAttribute("data-streak", String(current));
-    tile.setAttribute("data-best", String(best));
-    tile.setAttribute("data-status", status);
+    row.setAttribute("data-habit", def.id);
+    row.setAttribute("data-streak", String(current));
+    row.setAttribute("data-best", String(best));
+    row.setAttribute("data-status", status);
     emoji.setAttribute("aria-hidden", "true");
     open.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
     open.setAttribute("data-select", def.id);
     open.setAttribute("data-focus", "tile:" + def.id);
     open.appendChild(emoji);
-    open.appendChild(node("span", BODY[def.id] ? "sr-only" : "habit-label", def.label));
-    open.appendChild(node("span", "habit-streak", String(current)));
-    open.appendChild(node("span", "habit-streak-lbl", streakLabel));
-    open.appendChild(node("span", "best", "Best " + best));
-    open.appendChild(node("span", "today-pill " + status, "Today · " + statusText(status)));
+    open.appendChild(node("span", "streak-text", phrase));
     open.addEventListener("click", function () {
       onSelect(selected === def.id ? "" : def.id, "tile:");
     });
-    tile.appendChild(open);
+    row.appendChild(open);
     if (BODY[def.id]) {
-      name = node("a", "habit-health", def.label);
-      name.href = HEALTH;
-      name.setAttribute("data-focus", "link:" + def.id);
-      tile.appendChild(name);
+      link = node("a", "habit-health", "Health");
+      link.href = HEALTH;
+      link.setAttribute("aria-label", "Health for " + label);
+      link.setAttribute("data-focus", "link:" + def.id);
+      row.appendChild(link);
     }
-    return tile;
+    return row;
   }
 
   function legendItem(className, mark, text) {
@@ -309,7 +354,7 @@
     if (day > today) return { className: "hcell future", text: JournalData.label(day) + " · ahead", status: "future", mark: "" };
     if (selected) {
       name = findDef(defs, selected);
-      name = name ? name.label : selected;
+      name = name ? labelOf(name) : selected;
       status = JournalData.habitStatus(day, selected);
       if (status === "none") status = "none";
       mark = status === "done" ? "\u2713" : status === "miss" ? "\u00d7" : "";
@@ -360,7 +405,7 @@
     var loggedDays = loggedCount(weeks, defs, today);
     var focus = selected ? findDef(defs, selected) : null;
     var summary = "Year in days · " + (focus ? focus.label + " · " : "") + loggedDays + (loggedDays === 1 ? " day logged" : " days logged");
-    var made = section("habit-year", "Year in days", summary);
+    var made = section("habit-year", "Year in days", summary, "\uD83D\uDDD3\uFE0F");
     var chips = node("div", "habit-chips");
     var scroll = node("div", "heat-scroll");
     var months = node("div", "heat-months");
@@ -372,7 +417,7 @@
     made.body.appendChild(node("p", "habit-note", selected ? "One habit across the last year. Stripes mean unknown." : "How many habits were done each day. Stripes mean unknown."));
     chips.appendChild(chipButton("", "All habits", !selected, onSelect));
     defs.forEach(function (def) {
-      chips.appendChild(chipButton(def.id, def.label, selected === def.id, onSelect));
+      chips.appendChild(chipButton(def.id, labelOf(def), selected === def.id, onSelect));
     });
     made.body.appendChild(chips);
     DOW.forEach(function (label) { dow.appendChild(node("span", "", label)); });
@@ -517,7 +562,7 @@
       dot = svgEl("circle");
       dot.setAttribute("cx", round(xAt(i)));
       dot.setAttribute("cy", round(yAt(rate)));
-      dot.setAttribute("r", "3.2");
+      dot.setAttribute("r", "3");
       dot.setAttribute("class", className);
       svg.appendChild(dot);
     });
@@ -584,8 +629,9 @@
     if (selected) {
       def = findDef(defs, selected);
       row = item.stats.perHabit[selected];
-      if (!row || row.rate == null) return name + " · " + (def ? def.label : selected) + " · no log";
-      return name + " · " + (def ? def.label : selected) + " · " + pct(row.rate) + " · " + row.done + " of " + row.total + " days";
+      def = def ? labelOf(def) : selected;
+      if (!row || row.rate == null) return name + " \u00b7 " + def + " \u00b7 no log";
+      return name + " \u00b7 " + def + " \u00b7 " + pct(row.rate) + " \u00b7 " + row.done + " of " + row.total + " days";
     }
     if (item.stats.overall == null) return name + " · no log";
     return name + " · " + pct(item.stats.overall) + " of habits done · " + item.stats.logged + " logged days";
@@ -593,9 +639,9 @@
 
   function trendSummary(kind, headline, focus) {
     var title = kind === "week" ? "Week by week" : "Month by month";
-    if (headline.rate == null) return title + " · no log yet";
-    if (focus) return title + " · " + focus.label + " · " + pct(headline.rate) + " done";
-    return title + " · " + pct(headline.rate) + " done";
+    if (headline.rate == null) return title + " \u00b7 no log yet";
+    if (focus) return title + " \u00b7 " + labelOf(focus) + " \u00b7 " + pct(headline.rate) + " done";
+    return title + " \u00b7 " + pct(headline.rate) + " done";
   }
 
   function renderTrend(kind, defs, today, selected, onSelect) {
@@ -610,7 +656,7 @@
     });
     var headline = windowTotals(series, defs, selected);
     var focus = selected ? findDef(defs, selected) : null;
-    var made = section(kind === "week" ? "habit-weeks" : "habit-months", kind === "week" ? "Week by week" : "Month by month", trendSummary(kind, headline, focus));
+    var made = section(kind === "week" ? "habit-weeks" : "habit-months", kind === "week" ? "Week by week" : "Month by month", trendSummary(kind, headline, focus), kind === "week" ? "\uD83D\uDCCA" : "\uD83D\uDCC8");
     var chart = renderChart(series, defs, selected);
     var labels = node("div", "trend-x");
     var tip = node("p", "trend-tip");
@@ -618,11 +664,11 @@
     var stops = node("div", "trend-stops");
     var noun = kind === "week" ? "12 weeks" : "6 months";
     var head = node("p", "trend-head");
-    var chartLabel = (kind === "week" ? "Weekly" : "Monthly") + " completion, " + pct(headline.rate) + (focus ? " for " + focus.label : " for all habits") + ".";
+    var chartLabel = (kind === "week" ? "Weekly" : "Monthly") + " completion, " + pct(headline.rate) + (focus ? " for " + labelOf(focus) : " for all habits") + ".";
     var active = series.length - 1;
     made.root.setAttribute("data-span", kind);
     head.appendChild(node("b", "", pct(headline.rate)));
-    head.appendChild(document.createTextNode(focus ? " " + focus.label + " · last " + noun : " of habits done · last " + noun));
+    head.appendChild(document.createTextNode(focus ? " " + labelOf(focus) + " \u00b7 last " + noun : " of habits done \u00b7 last " + noun));
     made.body.appendChild(head);
     made.body.appendChild(chart.svg);
     stops.className = "trend-stops";
@@ -717,7 +763,7 @@
 
     addRow("", "All habits", windowTotals(series, defs, "").rate, 0, !selected);
     defs.forEach(function (def, index) {
-      addRow(def.id, def.label, windowTotals(series, defs, def.id).rate, index, selected === def.id);
+      addRow(def.id, labelOf(def), windowTotals(series, defs, def.id).rate, index, selected === def.id);
     });
     made.body.appendChild(list);
     return made.root;

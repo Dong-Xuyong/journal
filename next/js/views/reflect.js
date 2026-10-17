@@ -2,6 +2,7 @@
 (function () {
   "use strict";
 
+  var REFLECT_EMOJI = "\uD83E\uDE9E";
   var DEFAULT_QUESTIONS = [
     { id: "q1", text: "If I knew I couldn't fail, what would I like to do?" },
     { id: "q2", text: "Even if I knew I would fail, what would I like to do anyway?" },
@@ -148,14 +149,36 @@
     return label || String(date || "");
   }
 
+  function shownQuestion(text) {
+    var value = String(text || "");
+    if (window.JournalUI && typeof window.JournalUI.plain === "function") return window.JournalUI.plain(value);
+    return value;
+  }
+
   function makeFold(spec) {
-    var folded = window.JournalUI.fold({
+    var opts = {
       id: spec.id,
       title: spec.title,
       level: spec.level,
       summary: spec.summary
-    });
+    };
+    if (spec.emoji) opts.emoji = spec.emoji;
+    var folded = window.JournalUI.fold(opts);
     addClass(folded.root, "reflect-fold");
+    if (spec.emoji) {
+      var button = folded.root.querySelector(".fold-summary");
+      var slot;
+      var line;
+      if (button && !button.querySelector(".fold-emoji")) {
+        slot = document.createElement("span");
+        slot.className = "fold-emoji";
+        slot.setAttribute("aria-hidden", "true");
+        slot.textContent = spec.emoji;
+        line = button.querySelector(".fold-line");
+        if (line) button.insertBefore(slot, line);
+        else button.appendChild(slot);
+      }
+    }
     if (spec.extraClass) addClass(folded.root, spec.extraClass);
     folded.root.addEventListener("click", function (event) {
       event.stopPropagation();
@@ -168,6 +191,7 @@
     var i;
     var li;
     var when;
+    var answer;
     if (!list.length) return node("p", "reflect-empty", emptyText);
     ul = node("ul", "reflect-answers");
     for (i = 0; i < list.length; i++) {
@@ -175,7 +199,9 @@
       when = node("time", "reflect-when", dateLabel(list[i] && list[i].date));
       if (list[i] && list[i].date) when.setAttribute("datetime", String(list[i].date));
       li.appendChild(when);
-      li.appendChild(node("p", "reflect-answer", String(list[i] && list[i].text != null ? list[i].text : "")));
+      answer = node("p", "reflect-answer", String(list[i] && list[i].text != null ? list[i].text : ""));
+      answer.setAttribute("data-own", "");
+      li.appendChild(answer);
       ul.appendChild(li);
     }
     return ul;
@@ -223,7 +249,7 @@
     box.rows = 4;
     box.setAttribute("aria-keyshortcuts", "Control+Enter Meta+Enter");
     label.setAttribute("for", fieldId);
-    label.appendChild(node("span", "reflect-question", question.text || ""));
+    label.appendChild(node("span", "reflect-question", shownQuestion(question.text || "")));
     label.appendChild(box);
     save.type = "button";
     save.setAttribute("aria-label", "Save answer for question " + number);
@@ -254,7 +280,8 @@
       id: "day:reflection",
       title: "Reflection",
       level: 3,
-      summary: line
+      summary: line,
+      emoji: REFLECT_EMOJI
     });
     var today;
     var allLine;
@@ -308,7 +335,8 @@
       id: "year:reflection:" + year,
       title: "Reflection",
       level: 3,
-      summary: line
+      summary: line,
+      emoji: REFLECT_EMOJI
     });
     var i;
     var item;
@@ -331,7 +359,7 @@
       qFold.root.setAttribute("data-question-id", item.id);
       qFold.root.setAttribute("data-question-number", String(i + 1));
       digest = node("div", "reflect-digest");
-      digest.appendChild(node("p", "reflect-question", item.text || ""));
+      digest.appendChild(node("p", "reflect-question", shownQuestion(item.text || "")));
       digest.appendChild(node("p", "reflect-count", answerPhrase(list.length) + " in " + year));
       if (!list.length) digest.appendChild(node("p", "reflect-empty", "No answer this year."));
       else digest.appendChild(history([list[0]], "No answer this year."));
