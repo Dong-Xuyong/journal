@@ -491,6 +491,7 @@ test("an extra question shows as question 10 and the year digest is read-only", 
   await day.locator(".reflect-all > summary").click();
   const q10 = day.locator("[data-question-number='10']");
   await expect(q10.locator(":scope > summary")).toContainText("Question 10");
+  await q10.locator(":scope > summary").click();
   await expect(q10).toContainText("What would I give a year to learn?");
   await expect(q10.locator("textarea")).toHaveAccessibleName(/What would I give a year to learn\?/);
   await expect(day.locator(".reflect-all > summary")).toContainText("All 10 questions");
@@ -563,12 +564,22 @@ test("360px axe, keyboard, focus, and tap targets", async ({ page }) => {
   await expectNoHorizontalScroll(page);
   await expectCleanAxe(page, "light open");
 
+  const wanted = await page.locator("a, summary, button, textarea").evaluateAll((els) => els.filter((el) => {
+    const style = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0 && el.id !== "tab-start";
+  }).length);
   await page.evaluate(() => {
-    document.body.setAttribute("tabindex", "-1");
-    document.body.focus();
+    const start = document.createElement("button");
+    start.id = "tab-start";
+    start.type = "button";
+    start.textContent = "Start";
+    document.body.prepend(start);
+    start.focus();
   });
   const seen = [];
-  for (let i = 0; i < 80; i += 1) {
+  let firstControl = "";
+  for (let i = 0; i < wanted + 5; i += 1) {
     await page.keyboard.press("Tab");
     const info = await page.evaluate(() => {
       const el = document.activeElement;
@@ -577,8 +588,18 @@ test("360px axe, keyboard, focus, and tap targets", async ({ page }) => {
       let name = el.getAttribute("aria-label") || "";
       if (!name && el.labels && el.labels.length) name = Array.from(el.labels).map((label) => label.innerText).join(" ");
       if (!name) name = (el.innerText || "").trim();
+      const parts = [];
+      let node = el;
+      while (node && node.nodeType === 1 && parts.length < 8) {
+        let part = node.tagName;
+        if (node.id) part += "#" + node.id;
+        else if (node.getAttribute("data-fold")) part += "[fold=" + node.getAttribute("data-fold") + "]";
+        else if (node.getAttribute("data-question-id")) part += "[q=" + node.getAttribute("data-question-id") + "]";
+        parts.push(part);
+        node = node.parentElement;
+      }
       return {
-        key: el.tagName + "|" + (el.id || "") + "|" + (el.getAttribute("data-fold") || "") + "|" + name.slice(0, 40),
+        path: parts.join("<"),
         tag: el.tagName,
         name: name.trim(),
         outlineStyle: style.outlineStyle,
@@ -587,22 +608,22 @@ test("360px axe, keyboard, focus, and tap targets", async ({ page }) => {
         h: rect.height
       };
     });
-    if (seen.length && info.key === seen[0].key) break;
+    if (info.tag === "BODY" || info.tag === "HTML" || info.path.indexOf("#tab-start") !== -1) continue;
+    if (!firstControl) firstControl = info.path;
+    else if (info.path === firstControl) break;
     seen.push(info);
   }
-
-  const wanted = await page.locator("a, summary, button, textarea").evaluateAll((els) => els.filter((el) => {
-    const style = getComputedStyle(el);
-    const rect = el.getBoundingClientRect();
-    return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
-  }).length);
-  expect(seen.length).toBeGreaterThanOrEqual(wanted);
+  expect(seen.length).toBe(wanted);
   seen.forEach((info) => {
-    expect(info.name, info.key).not.toBe("");
-    expect(parseFloat(info.outlineWidth), info.key).toBeGreaterThanOrEqual(2);
-    expect(info.outlineStyle, info.key).not.toBe("none");
-    expect(info.w, info.key).toBeGreaterThanOrEqual(44);
-    expect(info.h, info.key).toBeGreaterThanOrEqual(44);
+    expect(info.name, info.path).not.toBe("");
+    expect(parseFloat(info.outlineWidth), info.path).toBeGreaterThanOrEqual(2);
+    expect(info.outlineStyle, info.path).not.toBe("none");
+    expect(info.w, info.path).toBeGreaterThanOrEqual(44);
+    expect(info.h, info.path).toBeGreaterThanOrEqual(44);
+  });
+  await page.evaluate(() => {
+    const start = document.getElementById("tab-start");
+    if (start) start.remove();
   });
 
   const summaries = page.locator("summary");
