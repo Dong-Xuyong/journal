@@ -172,15 +172,9 @@ html.dark .period-view,
 
 .period-view a:focus,
 .period-view button:focus,
-.period-view input:focus,
-.period-view textarea:focus,
-.period-view select:focus,
 .period-view [tabindex]:focus,
 .period-view a:focus-visible,
 .period-view button:focus-visible,
-.period-view input:focus-visible,
-.period-view textarea:focus-visible,
-.period-view select:focus-visible,
 .period-view [tabindex]:focus-visible {
   outline: 3px solid var(--dx-accent, #1d4ed8);
   outline-offset: 2px;

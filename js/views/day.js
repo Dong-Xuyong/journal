@@ -1,16 +1,9 @@
 (function () {
   "use strict";
 
-  // Day screen. Morning and evening fields stay read-only.
-  // Writes go through JournalOps (to-dos only). Folds come from JournalUI.
+  // Day screen. Read-only: journal.json is edited outside this page.
   // Faces for mood 1–5. None when the score is missing. Energy is always ⚡.
   var FACES = ["\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04"];
-  var APPS = [
-    ["Health", "https://dong-xuyong.github.io/health/"],
-    ["Study", "https://dong-xuyong.github.io/wiki-flashcards/"],
-    ["Thesis", "https://dong-xuyong.github.io/thesis/"]
-  ];
-  var STUDY = "https://dong-xuyong.github.io/wiki-flashcards/";
 
   if (!window.JournalViews) window.JournalViews = {};
 
@@ -57,10 +50,6 @@
 
   function countLabel(n, one, many) {
     return n + " " + (n === 1 ? one : many);
-  }
-
-  function newId() {
-    return "t" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
   }
 
   function prioritiesOf(fields, todos) {
@@ -234,16 +223,11 @@
     var better = filled(fields.better) ? String(fields.better).trim() : "";
     var wrap;
     var older;
-    var link;
     if (!lesson && !better) {
       missing.push("lesson");
       return;
     }
     wrap = field(body, "lesson", "Lesson");
-    link = el("a", "day-study dx-btn dx-btn--ghost", "Study this in Wiki flashcards");
-    link.href = STUDY;
-    link.setAttribute("data-focus", "day:study");
-    wrap.appendChild(link);
     if (lesson) addCopy(wrap, lesson);
     if (better) {
       older = el("div", "day-field");
@@ -325,7 +309,6 @@
     var box;
     var list;
     var item;
-    var button;
     if (!prev) return;
     oldTodos = JournalData.todos(prev) || [];
     todayTodos = JournalData.todos(key) || [];
@@ -349,17 +332,6 @@
       item.lastChild.setAttribute("aria-hidden", "true");
       item.appendChild(el("span", "day-carry-text", text));
       item.lastChild.setAttribute("data-own", "");
-      button = el("button", "day-add dx-btn dx-btn--ghost", "Add");
-      button.type = "button";
-      button.setAttribute("aria-label", "Add to today: " + text);
-      button.setAttribute("data-focus", "carry:" + key + ":" + i);
-      button.addEventListener("click", function (label) {
-        return function () {
-          JournalOps.todoAdd(key, { id: newId(), text: label, done: false });
-          if (window.JournalUI && typeof JournalUI.announce === "function") JournalUI.announce("Added to today");
-        };
-      }(text));
-      item.appendChild(button);
       list.appendChild(item);
     }
     box.appendChild(list);
@@ -370,22 +342,6 @@
     var body = makeFold(parent, "day:todos", "To-dos", todoSummary(todos), "\u2705").body;
     if (window.JournalUI && typeof JournalUI.todoList === "function") JournalUI.todoList(body, key, {});
     mountYesterday(body, key);
-  }
-
-  function mountApps(parent) {
-    var body = makeFold(parent, "day:apps", "Other apps", "Other apps \u00b7 Health, Study, Thesis", "\uD83D\uDD17").body;
-    var list = el("ul", "day-apps");
-    var i;
-    var item;
-    var link;
-    for (i = 0; i < APPS.length; i++) {
-      item = el("li");
-      link = el("a", "day-app", APPS[i][0]);
-      link.href = APPS[i][1];
-      item.appendChild(link);
-      list.appendChild(item);
-    }
-    body.appendChild(list);
   }
 
   function paint(root, key) {
@@ -402,7 +358,6 @@
     mountEvening(view, key, fields);
     mountReflect(view, key);
     mountTodos(view, key, todos);
-    mountApps(view);
     root.appendChild(view);
   }
 

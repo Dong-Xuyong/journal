@@ -10,15 +10,17 @@ Entries and the quote of the day live in Dong-Xuyong/progress-sync, file journal
 
 The page loads that file on open, on focus, and every 60 seconds.
 
-Morning, evening, week and month fields are read-only on the page; Grok writes them. On the page you can edit to-dos and add reflection answers (append-only). Edits are queued and saved a few seconds later: the app reads the current file, applies only the queued edits, and writes it back, so fields it does not know about are kept.
+The page is read-only. It has no inputs, checkboxes or save buttons: Robin edits journal.json, and the page only shows it. The token from Connect GitHub is used to read the file; the page never writes to GitHub.
 
-The Habits tab is read-only tracking: today, streaks, the year in days, and week and month rates.
+The layout follows the nutrition app (`/health/nutrition/`): the period tabs (Day, Week, Month, Quarter, Year) sit in the top bar, a Journal / Habits switch sits under it, then the date card and the section cards. The day's reflection question and its answers are shown on the Day view, and the year's answers on the Year view.
 
-`CONTRACT.md` is the writer spec for journal.json. `docs/CONTRACT-NOTES.md` covers how the page reads and saves. `docs/PLAN.md` is the redesign plan and `docs/DESIGN-BRIEFS.md` the compact design pass.
+The Habits tab is tracking only: today, streaks, the year in days, and week and month rates.
+
+`CONTRACT.md` is the writer spec for journal.json. `docs/CONTRACT-NOTES.md` covers how the page reads the file. `docs/PLAN.md` is the redesign plan and `docs/DESIGN-BRIEFS.md` the compact design pass.
 
 ## Code
 
-No build step. `index.html` loads `js/data.js`, `js/ops.js`, `js/cites.js`, `js/ui.js`, `js/trends.js`, the views in `js/views/`, then `js/app.js`.
+No build step. `index.html` loads `js/data.js`, `js/sync.js`, `js/cites.js`, `js/ui.js`, `js/trends.js`, the views in `js/views/`, then `js/app.js`.
 
 ## Tests
 
@@ -31,7 +33,6 @@ Install Playwright and axe once: `npm i --prefix /tmp/jt playwright @axe-core/pl
 - `node tests/design.spec.mjs` (compact cards, one emoji per fold, no red outside errors, no exclamation points outside Dong's own text; also takes `BASE`)
 - `node tests/gh-sync-merge.test.mjs` (the shared `dong-ui/gh-sync.js`, which this page does not load)
 
-## Backup and round-trip check
+## Backup
 
 - `node tools/backup-journal.mjs` copies journal.json to `backups/` in progress-sync and checks the copy's SHA-256.
-- `node tools/verify-roundtrip.mjs <journal.json>` runs a scripted edit session and prints `nothing lost` when every original field survives.

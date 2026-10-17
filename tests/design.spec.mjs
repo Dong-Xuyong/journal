@@ -222,7 +222,7 @@ async function helpers(page) {
   check("own", "empty dots say not logged", api.emptyClass === "jn-dots is-empty" && api.emptyLabel === "Energy not logged" && api.emptyOn === 0 && api.dotCount === 5, JSON.stringify(api));
   check("own", "dots are 8px with a 3px gap", api.dotWidth === 8 && (api.dotGap === "3px" || api.dotGap === "3px 3px"), api.dotWidth + " " + api.dotGap);
   check("own", "closed probe fold is at most 48px", api.foldHeight <= 48, String(api.foldHeight));
-  check("own", "tokens are set", api.pad === "10px" && api.gap === "8px" && api.row === "40px" && api.tap === "32px" && api.error === "#b91c1c" && api.s0 === "#1d4ed8" && api.s6 === "#4d7c0f", JSON.stringify(api));
+  check("own", "tokens are set", api.pad === "10px" && api.gap === "8px" && api.row === "44px" && api.tap === "32px" && api.error === "#b91c1c" && api.s0 === "#1d4ed8" && api.s6 === "#4d7c0f", JSON.stringify(api));
   check("own", "status class names", api.status.error === "is-error" && api.status.done === "is-done" && api.status.miss === "is-miss" && api.status.unknown === "is-unknown", JSON.stringify(api.status));
 
   const colors = await page.evaluate(function () {
@@ -264,11 +264,15 @@ async function frame(page) {
       item.label = el.getAttribute("aria-label") || "";
       return item;
     });
-    var period = document.querySelector(".period");
+    var period = document.getElementById("hero");
     var buttons = Array.prototype.map.call(period.querySelectorAll("button"), rect);
+    var sections = Array.prototype.map.call(document.querySelectorAll("#sections a"), function (el) { return el.textContent.trim(); });
     var heading = rect(document.getElementById("period-heading"));
     return {
       tabs: rect(document.getElementById("tabs")),
+      inHeader: !!document.querySelector("header.dx-header #tabs"),
+      sections: sections,
+      apps: document.querySelectorAll('a[href^="https://dong-xuyong.github.io/"]:not(.dx-home), a[href^="../"]').length,
       links: links,
       crumbs: crumbs,
       period: rect(period),
@@ -277,13 +281,15 @@ async function frame(page) {
       tabDecoration: getComputedStyle(document.querySelector("#tabs a")).textDecorationLine,
       crumbDecoration: getComputedStyle(document.querySelector("#crumbs a")).textDecorationLine,
       sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-      own: document.querySelector(".todo textarea") ? document.querySelector(".todo textarea").getAttribute("data-own") : ""
+      own: document.querySelector(".todo [data-own]") ? document.querySelector(".todo [data-own]").getAttribute("data-own") : ""
     };
   });
-  const sameRow = Math.abs((box.heading.top + box.heading.top + box.heading.height) / 2 - (box.buttons[0].top + box.buttons[0].top + box.buttons[0].height) / 2) < 4;
-  check("own", "six tabs are one slim pill row", box.tabs.height <= 40 && box.tabs.right <= 360 && box.tabDecoration === "none" && box.links.length === 6 && box.links.every(function (link) { return Math.abs(link.top - box.links[0].top) < 1 && link.height >= 32 && link.height <= 40; }), JSON.stringify({ h: box.tabs.height, decoration: box.tabDecoration, links: box.links.map(function (link) { return link.text + " " + Math.round(link.height); }) }));
+  const headingAbove = box.heading.top + box.heading.height <= box.buttons[0].top + 1;
+  check("own", "five period tabs are one pill row in the top bar", box.inHeader && box.tabs.top < 120 && box.tabs.right <= 360 && box.tabDecoration === "none" && box.links.map(function (link) { return link.text; }).join(",") === "Day,Week,Month,Quarter,Year" && box.links.every(function (link) { return Math.abs(link.top - box.links[0].top) < 1 && link.height >= 44 && link.height <= 48; }), JSON.stringify({ top: box.tabs.top, decoration: box.tabDecoration, links: box.links.map(function (link) { return link.text + " " + Math.round(link.height); }) }));
+  check("own", "section nav is Journal and Habits", box.sections.join(",") === "Journal,Habits", box.sections.join(","));
+  check("own", "no links to other apps", box.apps === 0, String(box.apps));
   check("own", "breadcrumb is one short line", box.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>Sat 17" && box.crumbDecoration === "none" && box.crumbs.every(function (link) { return Math.abs(link.top - box.crumbs[0].top) < 1 && link.label.indexOf(link.text) !== -1 && link.right <= 360; }), box.crumbs.map(function (link) { return link.text + "=" + link.label; }).join(" | "));
-  check("own", "date and period buttons share one row", box.period.height <= 56 && sameRow && box.buttons.length === 3 && box.buttons.every(function (button) { return button.height >= 31 && button.height <= 36 && Math.abs(button.top - box.buttons[0].top) < 1; }), JSON.stringify({ h: box.period.height, sameRow: sameRow, buttons: box.buttons }));
+  check("own", "date card has the heading over one row of 44px buttons", box.period.height <= 140 && headingAbove && box.buttons.length === 3 && box.buttons.every(function (button) { return button.height >= 44 && button.height <= 46 && Math.abs(button.top - box.buttons[0].top) < 1; }), JSON.stringify({ h: box.period.height, headingAbove: headingAbove, buttons: box.buttons }));
   check("own", "day frame does not scroll sideways", box.sw <= 360, String(box.sw));
   check("own", "to-do text is marked as Dong's own", box.own === "todo", String(box.own));
 
@@ -299,20 +305,20 @@ async function frame(page) {
     }
     var links = Array.prototype.map.call(document.querySelectorAll("#tabs a"), rect);
     var crumbs = Array.prototype.map.call(document.querySelectorAll("#crumbs a"), rect);
-    var buttons = Array.prototype.map.call(document.querySelectorAll(".period button"), rect);
+    var buttons = Array.prototype.map.call(document.querySelectorAll("#hero button"), rect);
     var heading = rect(document.getElementById("period-heading"));
     return {
       tabs: rect(document.getElementById("tabs")),
       links: links,
       crumbs: crumbs,
-      period: rect(document.querySelector(".period")),
+      period: rect(document.getElementById("hero")),
       heading: heading,
       buttons: buttons,
       sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
     };
   });
-  const narrowRow = Math.abs((narrow.heading.top + narrow.heading.height / 2) - (narrow.buttons[0].top + narrow.buttons[0].height / 2)) < 4;
-  check("own", "320px frame stays one scrolling row", narrow.sw <= 320 && narrow.tabs.height <= 40 && narrow.tabs.right <= 320 && narrow.links.every(function (link) { return Math.abs(link.top - narrow.links[0].top) < 1; }) && narrow.crumbs.every(function (link) { return Math.abs(link.top - narrow.crumbs[0].top) < 1 && link.right <= 320; }) && narrow.period.height <= 56 && narrowRow, JSON.stringify({ sw: narrow.sw, tabs: narrow.tabs, period: narrow.period.height, crumbRights: narrow.crumbs.map(function (link) { return Math.round(link.right); }) }));
+  const narrowRow = narrow.buttons.every(function (button) { return Math.abs(button.top - narrow.buttons[0].top) < 1 && button.right <= 320; });
+  check("own", "320px frame stays one scrolling row", narrow.sw <= 320 && narrow.tabs.height <= 52 && narrow.tabs.right <= 320 && narrow.links.every(function (link) { return Math.abs(link.top - narrow.links[0].top) < 1; }) && narrow.crumbs.every(function (link) { return Math.abs(link.top - narrow.crumbs[0].top) < 1 && link.right <= 320; }) && narrow.period.height <= 160 && narrowRow, JSON.stringify({ sw: narrow.sw, tabs: narrow.tabs, period: narrow.period.height, crumbRights: narrow.crumbs.map(function (link) { return Math.round(link.right); }) }));
   await page.screenshot({ path: SHOTS + "/journal-320-light-closed.png", fullPage: true });
   await page.setViewportSize({ width: 360, height: 740 });
   await page.locator('[data-fold="day:quote"] .fold-summary').click();
@@ -381,8 +387,15 @@ async function scanRoute(page, hash) {
         if (parseFloat(style[prop]) > 12) compact.push("pad " + prop + " " + style[prop]);
       });
     });
-    var tops = Array.prototype.filter.call(document.querySelectorAll("#view > * > .fold, #view .fold"), function (el) {
-      return !el.parentElement.closest(".fold");
+    Array.prototype.forEach.call(document.querySelectorAll("#view .jn-card"), function (card) {
+      var count = card.querySelector(".jn-card-title").querySelectorAll(".fold-emoji").length;
+      var title = card.querySelector(".jn-card-line");
+      if (count !== 1) emoji.push("card " + count);
+      if (title && emojiCount(title.textContent)) emoji.push("card line " + title.textContent.slice(0, 40));
+      if (card.querySelectorAll(".fold-emoji").length !== 1) emoji.push("card body emoji");
+    });
+    var tops = Array.prototype.filter.call(document.querySelectorAll("#view .fold, #view .jn-card"), function (el) {
+      return !el.parentElement.closest(".fold, .jn-card");
     });
     for (var i = 0; i < tops.length - 1; i++) {
       var gap = tops[i + 1].getBoundingClientRect().top - tops[i].getBoundingClientRect().bottom;
@@ -457,9 +470,9 @@ async function routes(page) {
         check("route", hash + " " + state + " no rings or big type", !found.rings.length, found.rings.join("; "));
         check("route", hash + " " + state + " fits 360", found.sw <= 360, String(found.sw));
         if (!open && theme === "light") {
-          if (hash === "#day/2026-10-17") check("route", "day page height", found.height <= 760, String(found.height));
+          if (hash === "#day/2026-10-17") check("route", "day page height", found.height <= 900, String(found.height));
           if (hash === "#week/2026-W42") check("route", "week page height", found.height <= 900, String(found.height));
-          if (hash === "#habits") check("route", "habits page height", found.height <= 520, String(found.height));
+          if (hash === "#habits") check("route", "habits page height", found.height <= 620, String(found.height));
         }
         if (hash === "#habits" || hash === "#habits/thesis") check("route", hash + " " + state + " no gamification", !found.habits);
         const axe = await axeBad(page);
@@ -471,12 +484,14 @@ async function routes(page) {
   await page.evaluate(function () {
     document.querySelectorAll("#view .fold").forEach(function (el) { el.open = true; });
   });
-  const mine = await page.evaluate(function () {
-    return {
-      todos: Array.prototype.map.call(document.querySelectorAll("#view textarea[data-own]"), function (el) { return el.value; }),
-      answers: Array.prototype.map.call(document.querySelectorAll("#view .reflect-answer[data-own]"), function (el) { return el.textContent; })
-    };
+  const todos = await page.evaluate(function () {
+    return Array.prototype.map.call(document.querySelectorAll('#view [data-own="todo"]'), function (el) { return el.textContent; });
   });
+  await go(page, "#year/2026");
+  const answers = await page.evaluate(function () {
+    return Array.prototype.map.call(document.querySelectorAll("#view .reflect-answer[data-own]"), function (el) { return el.textContent; });
+  });
+  const mine = { todos: todos, answers: answers };
   check("route", "Dong's to-do shows as typed", mine.todos.indexOf("Call mum!") !== -1, mine.todos.join(" | "));
   check("route", "Dong's answer shows as typed", mine.answers.indexOf("Yes!") !== -1, mine.answers.join(" | "));
 }

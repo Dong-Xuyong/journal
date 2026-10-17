@@ -96,8 +96,6 @@ async function axeSerious(page, label) {
 
 function diffs(actual, expected, path, out) {
   const here = path || "";
-  if (here === "entries.2026-10-17.updatedAt") return;
-  if (here === "entries.2026-10-17.todos[0].done") return;
   if (expected && typeof expected === "object") {
     if (Array.isArray(expected)) {
       if (!Array.isArray(actual)) {
@@ -140,13 +138,6 @@ async function seed(page) {
           encoding: "base64",
           content: Buffer.from(JSON.stringify(fixture)).toString("base64")
         })
-      });
-    }
-    if (req.method() === "PUT") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ content: { sha: "def456" } })
       });
     }
     return route.fulfill({ status: 404, body: "" });
@@ -192,8 +183,8 @@ async function tabThrough(page) {
   return stops;
 }
 
-// Agreed compact targets: fold rows 40px, buttons and inputs 32px, anything else 24px.
-const TAP = { row: 40, control: 32, floor: 24 };
+// Nutrition-style targets: fold rows and frame buttons 44px, small buttons 32px, anything else 24px.
+const TAP = { row: 44, control: 32, floor: 24 };
 
 function checkTap(stop, where) {
   const floor = stop.fold || stop.control ? TAP.control : TAP.floor;
@@ -206,9 +197,9 @@ async function run() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 360, height: 740 } });
   const page = await context.newPage();
-  const puts = [];
+  const writes = [];
   page.on("request", function (req) {
-    if (req.method() === "PUT" && req.url().indexOf("api.github.com") !== -1) puts.push(req.postData() || "");
+    if (req.method() !== "GET") writes.push(req.method() + " " + req.url());
   });
   await seed(page);
   await page.goto(DAY_URL, { waitUntil: "networkidle" });
@@ -239,13 +230,23 @@ async function run() {
       r.label = el.getAttribute("aria-label") || "";
       return r;
     });
-    const period = document.querySelector(".period");
+    const period = document.getElementById("hero");
+    const header = document.querySelector("header.dx-header");
+    const sections = Array.prototype.map.call(document.querySelectorAll("#sections a"), function (el) {
+      const r = box(el);
+      r.text = el.textContent.replace(/\s+/g, " ").trim();
+      r.current = el.getAttribute("aria-current") || "";
+      return r;
+    });
     const buttons = Array.prototype.map.call(period.querySelectorAll("button"), box);
     const heading = box(document.getElementById("period-heading"));
     const tabStyle = getComputedStyle(tabBar.querySelector("a"));
     const crumbStyle = getComputedStyle(document.querySelector("#crumbs a"));
     return {
       tabs: box(tabBar),
+      tabsInHeader: header.contains(tabBar),
+      header: box(header),
+      sections: sections,
       links: links,
       crumbs: crumbLinks,
       period: box(period),
@@ -256,35 +257,37 @@ async function run() {
       sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
     };
   });
-  assert(frameBox.tabs.height <= 40, "tabs taller than 40px: " + frameBox.tabs.height);
+  assert(frameBox.tabsInHeader, "period tabs sit in the top bar, like nutrition");
+  assert(frameBox.tabs.top < 120, "period tabs are at the top: " + frameBox.tabs.top);
   assert(frameBox.tabs.right <= 360, "tab bar overflows the page: " + frameBox.tabs.right);
-  assert(frameBox.links.length === 6, "expected six tabs");
+  assert(frameBox.links.map(function (link) { return link.text; }).join(",") === "Day,Week,Month,Quarter,Year", "period tabs " + JSON.stringify(frameBox.links));
   assert(frameBox.links.every(function (link) { return Math.abs(link.top - frameBox.links[0].top) < 1; }), "tabs wrap onto a second row");
-  assert(frameBox.links.every(function (link) { return link.height >= 32 && link.height <= 40; }), "a tab is the wrong height " + JSON.stringify(frameBox.links));
+  assert(frameBox.links.every(function (link) { return link.height >= 44 && link.height <= 48; }), "a tab is the wrong height " + JSON.stringify(frameBox.links));
+  assert(frameBox.sections.map(function (link) { return link.text + ":" + link.current; }).join(",") === "Journal:page,Habits:", "section nav " + JSON.stringify(frameBox.sections));
   assert(frameBox.tabDecoration === "none" && frameBox.crumbDecoration === "none", "tabs or breadcrumbs are underlined");
   assert(frameBox.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>Sat 17", "breadcrumb labels " + frameBox.crumbs.map(function (link) { return link.text; }).join(">"));
   assert(frameBox.crumbs.every(function (link) { return Math.abs(link.top - frameBox.crumbs[0].top) < 1; }), "breadcrumb wraps");
   assert(frameBox.crumbs.every(function (link) { return link.label.indexOf(link.text) !== -1 && link.right <= 360; }), "breadcrumb name or overflow " + JSON.stringify(frameBox.crumbs));
-  assert(frameBox.period.height <= 56, "date row is taller than one line: " + frameBox.period.height);
-  assert(frameBox.buttons.length === 3 && frameBox.buttons.every(function (button) { return button.height >= 32 && button.height <= 36 && Math.abs(button.top - frameBox.buttons[0].top) < 1; }), "period buttons should be one 32px row " + JSON.stringify(frameBox.buttons));
-  assert(Math.abs((frameBox.heading.top + frameBox.heading.bottom) / 2 - (frameBox.buttons[0].top + frameBox.buttons[0].bottom) / 2) < 4, "date heading and buttons are not on one row");
+  assert(frameBox.period.height <= 140, "date card is too tall: " + frameBox.period.height);
+  assert(frameBox.buttons.length === 3 && frameBox.buttons.every(function (button) { return button.height >= 44 && button.height <= 46 && Math.abs(button.top - frameBox.buttons[0].top) < 1; }), "period buttons should be one 44px row " + JSON.stringify(frameBox.buttons));
+  assert(frameBox.heading.bottom <= frameBox.buttons[0].top + 1, "date heading sits above the buttons");
   assert(frameBox.sw <= 360, "frame scrolls sideways");
 
   const stops = await tabThrough(page);
   const names = stops.map(function (stop) { return stop.name; });
-  const expected = ["Skip to content", "Home", "Switch to dark mode", "Day", "Week", "Month", "Quarter", "Year", "Habits"];
+  const expected = ["Skip to content", "Home", "Switch to dark mode", "Day", "Week", "Month", "Quarter", "Year", "Journal", "Habits"];
   expected.forEach(function (name, index) {
     assert(names[index] === name, "tab " + index + " expected " + name + " got " + names[index] + " full " + JSON.stringify(names));
   });
-  assert(names[9].indexOf("Year") === 0, "breadcrumb starts at the year, got " + names[9]);
-  assert(names[10].indexOf("Quarter") === 0, "breadcrumb quarter link, got " + names[10]);
-  assert(names[11].indexOf("Month") === 0, "breadcrumb month, got " + names[11]);
-  assert(names[12].indexOf("Week") === 0, "breadcrumb week, got " + names[12]);
-  assert(names[13].indexOf("Day") === 0, "breadcrumb day, got " + names[13]);
-  assert(names[14] === "Prev day", "previous control, got " + names[14]);
-  assert(names[15] === "Next day", "next control (Today is disabled on today), got " + names[15]);
-  assert(names[16].indexOf("Quote") === 0, "quote fold follows next, got " + names[16]);
-  assert(names[17].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[17]);
+  assert(names[10].indexOf("Year") === 0, "breadcrumb starts at the year, got " + names[10]);
+  assert(names[11].indexOf("Quarter") === 0, "breadcrumb quarter link, got " + names[11]);
+  assert(names[12].indexOf("Month") === 0, "breadcrumb month, got " + names[12]);
+  assert(names[13].indexOf("Week") === 0, "breadcrumb week, got " + names[13]);
+  assert(names[14].indexOf("Day") === 0, "breadcrumb day, got " + names[14]);
+  assert(names[15] === "Previous day", "previous control, got " + names[15]);
+  assert(names[16] === "Next day", "next control (Today is disabled on today), got " + names[16]);
+  assert(names[17].indexOf("Quote") === 0, "quote fold follows next, got " + names[17]);
+  assert(names[18].indexOf("Morning") === 0, "morning fold follows the quote, got " + names[18]);
   assert(await page.locator("#today").isDisabled(), "Today is disabled while on today");
   stops.forEach(function (stop) {
     assert(stop.name.length > 0, "control is missing an accessible name: " + stop.tag);
@@ -313,40 +316,31 @@ async function run() {
   await page.goto(HABITS_URL, { waitUntil: "networkidle" });
   assert((await heading.innerText()) === "Habits", "habits route heading");
   assert(await heading.evaluate(function (el) { return document.activeElement === el; }), "habits load should focus the heading");
-  assert(await page.locator('#tabs a[href="#habits"]').getAttribute("aria-current") === "page", "Habits tab is current");
+  assert(await page.locator('#sections a[href="#habits"]').getAttribute("aria-current") === "page", "Habits section is current");
   assert(await page.locator("#prev").isHidden(), "habits hides previous");
   assert(await scrollWidth(page) <= 360, "habits view scrolls sideways");
-  assert(puts.length === 0, "habits load must not PUT");
+  assert(writes.length === 0, "habits load must not write: " + writes.join(", "));
 
   await page.goto(DAY_URL, { waitUntil: "networkidle" });
-  await page.evaluate(function () {
-    const el = document.getElementById("sync-label");
-    window.__syncLog = [el.textContent];
-    const obs = new MutationObserver(function () { window.__syncLog.push(el.textContent); });
-    obs.observe(el, { childList: true, subtree: true, characterData: true });
-  });
+  await page.waitForFunction(function () { return document.getElementById("sync-label").textContent === "Synced"; });
   await page.locator('[data-fold="day:todos"] .fold-summary').click();
-  const putWait = page.waitForRequest(function (req) { return req.method() === "PUT"; });
-  await page.getByRole("checkbox", { name: "Call bank" }).click();
-  const queue = await page.evaluate(function () { return (JSON.parse(localStorage.getItem("journal-next-ops") || "{}").ops) || []; });
-  assert(queue.length === 1, "tick should queue one operation, got " + JSON.stringify(queue));
-  assert(queue[0].type === "todoPatch" && queue[0].key === DAY && queue[0].id === "t1" && queue[0].patch.done === true, "queued op should be the tick: " + JSON.stringify(queue[0]));
-  await putWait;
-  await page.waitForFunction(function () { return document.getElementById("sync-label").textContent === "Saved"; });
-  const log = await page.evaluate(function () { return window.__syncLog; });
-  const savingAt = log.indexOf("Saving\u2026");
-  const savedAt = log.lastIndexOf("Saved");
-  assert(savingAt !== -1 && savedAt !== -1 && savingAt < savedAt, "status should read Saving\u2026 then Saved, got " + JSON.stringify(log));
-  assert(puts.length === 1, "expected one PUT, got " + puts.length);
-  const body = JSON.parse(puts[0]);
-  const saved = JSON.parse(Buffer.from(body.content, "base64").toString("utf8"));
+  const readOnly = await page.evaluate(function () {
+    const todo = document.querySelector('[data-todo] [data-own="todo"]');
+    return {
+      controls: document.querySelectorAll("#main input, #main textarea, #main select, #main [contenteditable], #main [role=checkbox]").length,
+      todo: todo ? todo.textContent : null,
+      reflection: !!document.querySelector('#view [data-reflect="day"] .reflect-question')
+    };
+  });
+  assert(readOnly.controls === 0, "the day view has edit controls: " + readOnly.controls);
+  assert(readOnly.todo === "Call bank", "to-do shows as stored, got " + readOnly.todo);
+  assert(readOnly.reflection, "the reflection shows on the day view");
+  const cached = await page.evaluate(function () { return JSON.parse(localStorage.getItem("journal-next-cache")); });
   const problems = [];
-  diffs(saved, fixture, "", problems);
-  assert(!problems.length, "PUT dropped or changed stored data:\n" + problems.join("\n"));
-  const savedTodo = saved.entries[DAY].todos[0];
-  assert(savedTodo.done === true, "tick should be the intended edit");
-  assert(savedTodo.mit === true && savedTodo.source === "mirror", "todo fields besides the tick should stay");
+  diffs(cached, fixture, "", problems);
+  assert(!problems.length, "sync changed stored data:\n" + problems.join("\n"));
   assert(await page.evaluate(function () { return localStorage.getItem("journal-v1"); }) === JSON.stringify({ sentinel: true }), "journal-v1 must stay untouched");
+  assert(writes.length === 0, "the app must not write: " + writes.join(", "));
 
   await page.evaluate(function () {
     document.querySelectorAll(".fold").forEach(function (el) { el.open = false; });

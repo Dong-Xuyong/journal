@@ -8,15 +8,13 @@ import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
-import { lostReport, scriptSession } from "../tools/verify-roundtrip.mjs";
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const dataPath = path.join(root, "js/data.js");
-const opsPath = path.join(root, "js/ops.js");
+const syncPath = path.join(root, "js/sync.js");
 const data = require(dataPath);
-const opsPure = require(opsPath);
 const { chromium } = require("/tmp/jt/node_modules/playwright");
 const { AxeBuilder } = require("/tmp/jt/node_modules/@axe-core/playwright");
 
@@ -56,16 +54,12 @@ function boot(store, fetchImpl, extras) {
   if (extras && extras.document) sandbox.document = extras.document;
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(dataPath, "utf8"), sandbox, { filename: dataPath });
-  vm.runInContext(fs.readFileSync(opsPath, "utf8"), sandbox, { filename: opsPath });
-  return { ops: sandbox.window.JournalOps, data: sandbox.window.JournalData, timers: timers };
+  vm.runInContext(fs.readFileSync(syncPath, "utf8"), sandbox, { filename: syncPath });
+  return { sync: sandbox.window.JournalSync, data: sandbox.window.JournalData, timers: timers };
 }
 
 function encodeFile(text) {
   return Buffer.from(text, "utf8").toString("base64");
-}
-
-function decodePut(body) {
-  return JSON.parse(Buffer.from(body.content, "base64").toString("utf8"));
 }
 
 function fakeRes(status, json) {
@@ -331,59 +325,6 @@ function testRollup() {
   assert.equal(JSON.stringify(year).indexOf("NaN"), -1);
 }
 
-function testApplyPure() {
-  const doc = {
-    version: 1,
-    mystery: { a: 1 },
-    entries: { "2026-10-17": { updatedAt: "old", fields: { focus: "Keep" }, todos: [{ id: "t1", text: "Call", done: false, mit: true }] } },
-    reflections: { questions: [{ id: "q1", text: "Keep me" }], answers: { q1: [{ date: "2026-10-16", text: "A" }] } }
-  };
-  const same = opsPure.applyOps(doc, [{ type: "appendAnswer", qid: "q1", answer: { date: "2026-10-16", text: "A" } }], "2026-10-17T12:00:00.000Z");
-  assert.equal(same.reflections.answers.q1.length, 1);
-  assert.equal(JSON.stringify(same.reflections.questions), JSON.stringify(doc.reflections.questions));
-  const both = opsPure.applyOps(doc, [{ type: "appendAnswer", qid: "q1", answer: { date: "2026-10-17", text: "B" } }], "2026-10-17T12:00:00.000Z");
-  assert.equal(both.reflections.answers.q1.length, 2);
-  assert.equal(both.reflections.answers.q1[0].text, "A");
-  assert.equal(both.reflections.answers.q1[1].text, "B");
-  assert.equal(JSON.stringify(both.mystery), JSON.stringify(doc.mystery));
-  assert.equal(JSON.stringify(both.entries["2026-10-17"].fields), JSON.stringify(doc.entries["2026-10-17"].fields));
-  const created = opsPure.applyOps({ version: 1, entries: {} }, [{ type: "appendAnswer", qid: "q9", answer: { date: "2026-10-17", text: "Path" } }], "now");
-  assert.equal(created.reflections.questions.length, 9);
-  assert.equal(created.reflections.questions[0].id, "q1");
-  assert.equal(created.reflections.answers.q9[0].text, "Path");
-  const added = opsPure.applyOps({ version: 1 }, [
-    { type: "todoAdd", key: "2026-10-17", todo: { id: "n1", text: "New", done: false } }
-  ], "2026-10-17T00:00:00.000Z");
-  assert.deepEqual(Object.keys(added.entries["2026-10-17"]).sort(), ["fields", "todos", "updatedAt"]);
-  assert.equal(added.entries["2026-10-17"].updatedAt, "2026-10-17T00:00:00.000Z");
-  assert.equal(JSON.stringify(doc.entries["2026-10-17"].todos), JSON.stringify([{ id: "t1", text: "Call", done: false, mit: true }]));
-}
-
-function roundTripFixture() {
-  const doc = remoteFixture();
-  doc.entries["2026-10-17"].fields.tomorrow = ["rest"];
-  return doc;
-}
-
-function testRoundTripTool() {
-  const fixture = roundTripFixture();
-  const ctx = scriptSession(fixture);
-  const edited = opsPure.applyOps(fixture, ctx.ops, "2026-10-17T15:00:00.000Z");
-  const losses = lostReport(fixture, edited, ctx);
-  assert.deepEqual(losses, []);
-  const broken = JSON.parse(JSON.stringify(edited));
-  delete broken.days;
-  assert.ok(lostReport(fixture, broken, ctx).length > 0);
-
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "journal-rt-"));
-  const file = path.join(dir, "journal.json");
-  fs.writeFileSync(file, JSON.stringify(fixture, null, 2));
-  const ran = spawnSync(process.execPath, [path.join(root, "tools/verify-roundtrip.mjs"), file], { encoding: "utf8" });
-  assert.equal(ran.status, 0, ran.stderr || ran.stdout);
-  assert.equal(ran.stdout.trim(), "nothing lost");
-  assert.equal(fs.readFileSync(file, "utf8"), JSON.stringify(fixture, null, 2));
-}
-
 function testBackupTool() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "journal-bak-"));
   const src = path.join(dir, "journal.json");
@@ -407,18 +348,21 @@ function testBackupTool() {
   assert.match(missing.stderr, /GITHUB_TOKEN/);
 }
 
-async function testSaveQueue() {
-  const opsSource = fs.readFileSync(opsPath, "utf8");
+async function testReadOnlySync() {
+  const syncSource = fs.readFileSync(syncPath, "utf8");
   const dataSource = fs.readFileSync(dataPath, "utf8");
-  assert.equal(opsSource.includes("journal-v1"), false);
   assert.equal(dataSource.includes("journal-v1"), false);
+  assert.equal(/method:\s*"(PUT|POST|PATCH|DELETE)"/.test(syncSource), false);
+  assert.equal(fs.existsSync(path.join(root, "js/ops.js")), false);
 
   const remote = remoteFixture();
   const pretty = JSON.stringify(remote, null, 2);
   const stale = JSON.parse(JSON.stringify(remote));
   stale.entries["2026-10-17"].fields = { focus: "Stale local" };
+  const legacyOps = JSON.stringify({ ops: [{ type: "todoPatch", key: "2026-10-17", id: "t1", patch: { done: true } }] });
   const store = memoryStorage({
     "journal-v1": "sentinel",
+    "journal-next-ops": legacyOps,
     "journal-next-cache": JSON.stringify(stale),
     "dong-gh-sync": JSON.stringify({ token: "test-token", repo: "Dong-Xuyong/progress-sync" })
   });
@@ -430,121 +374,49 @@ async function testSaveQueue() {
     onGet: function () { return { sha: "sha-1", raw: pretty }; },
     onPut: function () { return 200; }
   };
-  const first = boot(store, githubFetch(state));
-  assert.equal(first.ops.status(), "idle");
-  assert.equal(first.data.fields("2026-10-17").focus, "Stale local");
-  first.ops.todoPatch("2026-10-17", "t1", { done: true });
-  assert.equal(first.ops.status(), "pending");
-  assert.equal(first.timers[first.timers.length - 1].ms, 2500);
-  assert.equal(first.data.todos("2026-10-17")[0].done, true);
-  const queued = store.getItem("journal-next-ops");
-  assert.match(queued, /todoPatch/);
-
-  const hidden = [];
-  const doc = {
-    visibilityState: "visible",
-    addEventListener: function (name, fn) { hidden.push(fn); }
-  };
-  const second = boot(store, githubFetch(state), { document: doc });
-  assert.equal(second.ops.status(), "pending");
-  assert.match(store.getItem("journal-next-ops"), /todoPatch/);
-  doc.visibilityState = "hidden";
-  hidden[0]();
-  await second.ops.flush();
-  assert.equal(state.puts.length, 1);
-  assert.equal(state.puts[0].message, "Save journal progress");
-  assert.equal(state.puts[0].sha, "sha-1");
+  const doc = { visibilityState: "visible", addEventListener: function () {} };
+  const booted = boot(store, githubFetch(state), { document: doc });
+  assert.equal(booted.sync.status(), "idle");
+  assert.equal(booted.data.fields("2026-10-17").focus, "Stale local");
+  assert.equal(booted.timers.length, 1);
+  assert.equal(await booted.sync.pull(), "synced");
+  assert.equal(state.puts.length, 0);
   assert.equal(state.headers[0].Authorization, "Bearer test-token");
   assert.match(state.urls[0], /Dong-Xuyong\/progress-sync\/contents\/journal\.json/);
-  const put = decodePut(state.puts[0]);
-  assert.equal(put.entries["2026-10-17"].fields.focus, "Grok wrote this");
-  assert.equal(put.entries["2026-10-17"].todos[0].done, true);
-  assert.equal(put.entries["2026-10-17"].todos[0].mit, true);
-  assert.equal(JSON.stringify(put.mystery), JSON.stringify(remote.mystery));
-  assert.equal(JSON.stringify(put.days), JSON.stringify(remote.days));
-  assert.equal(JSON.stringify(put.sleep), JSON.stringify(remote.sleep));
-  assert.equal(JSON.stringify(put.entries["2026-10-17"].habits), JSON.stringify(remote.entries["2026-10-17"].habits));
-  assert.equal(JSON.stringify(put.entries["2026-10-17"].habitStreaks), JSON.stringify(remote.entries["2026-10-17"].habitStreaks));
-  assert.equal(JSON.stringify(put.entries["2026-10-17"].fields), JSON.stringify(remote.entries["2026-10-17"].fields));
-  assert.equal(JSON.stringify(put.entries["2026-10-18"]), JSON.stringify(remote.entries["2026-10-18"]));
-  assert.equal(put.habitDefs[0].label, "Thesis 📝");
-  const problems = [];
-  walkPaths(remote, put, function (pathName) {
-    return pathName === "entries.2026-10-17.updatedAt" || pathName === "entries.2026-10-17.todos[0].done";
-  }, "", problems);
-  assert.deepEqual(problems, []);
-  assert.equal(store.getItem("journal-v1"), "sentinel");
+  assert.equal(booted.data.fields("2026-10-17").focus, "Grok wrote this");
+  assert.equal(booted.data.todos("2026-10-17")[0].done, false);
+  assert.equal(store.getItem("journal-next-cache"), pretty);
   assert.equal(store.getItem("journal-next-backup"), pretty);
-  assert.equal(store.getItem("journal-next-ops"), null);
-  assert.equal(second.ops.status(), "saved");
+  assert.equal(store.getItem("journal-next-ops"), legacyOps);
+  assert.equal(store.getItem("journal-v1"), "sentinel");
+  const cached = JSON.parse(store.getItem("journal-next-cache"));
+  const problems = [];
+  walkPaths(remote, cached, function () { return false; }, "", problems);
+  assert.deepEqual(problems, []);
 
-  const raced = remoteFixture();
-  const racedPretty = JSON.stringify(raced, null, 2);
-  const racedNext = JSON.parse(racedPretty);
-  racedNext.entries["2026-10-17"].fields.tomorrow = ["from grok"];
-  const racedRaw = JSON.stringify(racedNext, null, 2);
-  const raceState = {
-    gets: 0,
-    puts: [],
-    urls: [],
-    headers: [],
-    onGet: function (n) { return { sha: "sha-" + n, raw: n === 1 ? racedPretty : racedRaw }; },
-    onPut: function (n) { return n === 1 ? 409 : 200; }
-  };
-  const raceStore = memoryStorage({
-    "journal-v1": "sentinel",
-    "dong-gh-sync": JSON.stringify({ token: "test-token" })
-  });
-  const race = boot(raceStore, githubFetch(raceState));
-  race.ops.todoPatch("2026-10-17", "t1", { done: true });
-  await race.ops.flush();
-  assert.equal(raceState.gets, 2);
-  assert.equal(raceState.puts.length, 2);
-  assert.equal(raceState.puts[1].sha, "sha-2");
-  const retried = decodePut(raceState.puts[1]);
-  assert.equal(retried.entries["2026-10-17"].fields.focus, "Grok wrote this");
-  assert.deepEqual(retried.entries["2026-10-17"].fields.tomorrow, ["from grok"]);
-  assert.equal(retried.entries["2026-10-17"].todos[0].done, true);
-  assert.equal(JSON.stringify(retried.days), JSON.stringify(raced.days));
-  assert.equal(raceStore.getItem("journal-next-backup"), racedPretty);
-  assert.equal(race.ops.status(), "saved");
+  const next = JSON.parse(pretty);
+  next.entries["2026-10-17"].fields.tomorrow = ["from robin"];
+  state.onGet = function () { return { sha: "sha-2", raw: JSON.stringify(next, null, 2) }; };
+  let changed = 0;
+  booted.sync.onChange(function () { changed += 1; });
+  await booted.sync.pull();
+  assert.ok(changed > 0);
+  assert.equal(JSON.stringify(booted.data.fields("2026-10-17").tomorrow), JSON.stringify(["from robin"]));
+  assert.equal(store.getItem("journal-next-backup"), pretty);
+  assert.equal(state.puts.length, 0);
 
-  const offlineState = { gets: 0, puts: [], urls: [], headers: [], onGet: function () { return Promise.reject(new TypeError("failed")); }, onPut: function () { return 500; } };
-  const offlineFetch = function () {
-    offlineState.gets += 1;
-    return Promise.reject(new TypeError("failed"));
-  };
   const offlineStore = memoryStorage({ "dong-gh-sync": JSON.stringify({ token: "test-token" }), "journal-v1": "sentinel" });
-  const offline = boot(offlineStore, offlineFetch);
-  offline.ops.appendAnswer("q1", { date: "2026-10-17", text: "A" });
-  offline.ops.appendAnswer("q1", { date: "2026-10-17", text: "A" });
-  offline.ops.appendAnswer("q1", { date: "2026-10-17", text: "B" });
-  await offline.ops.flush();
-  assert.equal(offline.ops.status(), "offline");
-  assert.equal(offlineState.gets, 1);
-  assert.match(offlineStore.getItem("journal-next-ops"), /appendAnswer/);
+  const offline = boot(offlineStore, function () { return Promise.reject(new TypeError("failed")); });
+  assert.equal(await offline.sync.pull(), "offline");
   assert.equal(offlineStore.getItem("journal-v1"), "sentinel");
 
-  const noToken = boot(memoryStorage({ "journal-v1": "sentinel" }), function () { throw new Error("should not fetch"); });
-  noToken.ops.todoAdd("2026-10-18", { text: "Local only", done: false });
-  assert.equal(noToken.ops.status(), "offline");
-  assert.equal(noToken.timers.length, 0);
-  assert.equal(noToken.data.todos("2026-10-18")[0].text, "Local only");
-}
+  const errStore = memoryStorage({ "dong-gh-sync": JSON.stringify({ token: "test-token" }) });
+  const failed = boot(errStore, function () { return Promise.resolve(fakeRes(500, {})); });
+  assert.equal(await failed.sync.pull(), "error");
+  assert.equal(errStore.getItem("dong-gh-sync"), JSON.stringify({ token: "test-token" }));
 
-async function testNoPutOnServerError() {
-  let puts = 0;
-  const store = memoryStorage({ "dong-gh-sync": JSON.stringify({ token: "test-token" }) });
-  const booted = boot(store, function (url, opts) {
-    if ((opts && opts.method) === "PUT") puts += 1;
-    return Promise.resolve(fakeRes(500, {}));
-  });
-  booted.ops.todoPatch("2026-10-17", "t1", { done: true });
-  await booted.ops.flush();
-  assert.equal(puts, 0);
-  assert.equal(booted.ops.status(), "error");
-  assert.match(store.getItem("journal-next-ops"), /todoPatch/);
-  assert.equal(store.getItem("dong-gh-sync"), JSON.stringify({ token: "test-token" }));
+  const noToken = boot(memoryStorage({ "journal-v1": "sentinel" }), function () { throw new Error("should not fetch"); });
+  assert.equal(await noToken.sync.pull(), "idle");
 }
 
 function contentType(file) {
@@ -607,9 +479,8 @@ async function testViewport() {
     "html,body.dx{margin:0;background:#fff;color:#142033;max-width:100%;}" +
     "body.dx{padding:0 12px 24px;}" +
     "header.dx-header,header.dx-header a,h1.dx-title{color:#142033;background:#fff;}" +
-    "a,summary,label{min-height:44px;min-width:44px;display:flex;align-items:center;color:#142033;background:#fff;}" +
+    "a,summary{min-height:44px;min-width:44px;display:flex;align-items:center;color:#142033;background:#fff;}" +
     "summary{width:100%;}" +
-    "input[type=checkbox]{width:44px;height:44px;margin:0 8px 0 0;}" +
     ":focus{outline:3px solid #0b3a8f;outline-offset:-3px;}" +
     "p{overflow-wrap:anywhere;margin:0 0 12px;}" +
     "h1{font-size:20px;margin:0;}" +
@@ -618,16 +489,14 @@ async function testViewport() {
     "<header class=\"dx-header\"><a class=\"dx-home\" href=\"/\" aria-label=\"Home\">Home</a><h1 class=\"dx-title\">Journal</h1></header>" +
     "<main id=\"main\">" +
     "<details><summary>Morning · focus: Ship · 3 priorities</summary><p>" + long + "</p>" +
-    "<label><input id=\"tick\" type=\"checkbox\"> Call the bank</label></details>" +
+    "<p>Call the bank</p></details>" +
     "<details><summary>Evening · mood 4 / energy 4 · 2 wins</summary><p>Not written yet.</p></details>" +
     "</main>" +
     "<script>localStorage.setItem('dong-gh-sync', JSON.stringify({token:'test-token',repo:'Dong-Xuyong/progress-sync'}));" +
     "localStorage.setItem('journal-v1','sentinel');" +
     "localStorage.setItem('journal-next-cache'," + JSON.stringify(JSON.stringify(stale)) + ");</script>" +
     "<script src=\"/journal/js/data.js\"></script>" +
-    "<script src=\"/journal/js/ops.js\"></script>" +
-    "<script>document.getElementById('tick').addEventListener('change', function () {" +
-    "JournalOps.todoPatch('2026-10-17','t1',{done:document.getElementById('tick').checked});});</script>" +
+    "<script src=\"/journal/js/sync.js\"></script>" +
     "</body></html>";
   fs.writeFileSync("/tmp/site/harness.html", html);
   const server = await startServer("/tmp/site");
@@ -635,7 +504,7 @@ async function testViewport() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 360, height: 740 } });
   const page = await context.newPage();
-  const puts = [];
+  const writes = [];
   try {
     await page.route("https://api.github.com/**", async function (route) {
       const req = route.request();
@@ -647,11 +516,7 @@ async function testViewport() {
         });
         return;
       }
-      if (req.method() === "PUT") {
-        puts.push(JSON.parse(req.postData()));
-        await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
-        return;
-      }
+      writes.push(req.method());
       await route.fulfill({ status: 404, body: "" });
     });
     const got = page.waitForResponse(function (res) {
@@ -677,9 +542,9 @@ async function testViewport() {
       document.body.focus();
     });
     const focusCount = await page.evaluate(function () {
-      return document.querySelectorAll("a[href], summary, input, button").length;
+      return document.querySelectorAll("a[href], summary, input, textarea, button").length;
     });
-    assert.equal(focusCount, 5);
+    assert.equal(focusCount, 4);
     const seen = [];
     for (let i = 0; i < focusCount; i++) {
       await page.keyboard.press("Tab");
@@ -688,7 +553,6 @@ async function testViewport() {
         const style = getComputedStyle(el);
         const box = el.getBoundingClientRect();
         let name = el.getAttribute("aria-label") || "";
-        if (!name && el.labels && el.labels.length) name = el.labels[0].innerText;
         if (!name) name = (el.innerText || "").trim();
         return {
           tag: el.tagName,
@@ -719,18 +583,9 @@ async function testViewport() {
     const afterSpace = await page.locator("details").first().evaluate(function (el) { return el.open; });
     assert.notEqual(afterEnter, afterSpace);
 
-    await page.locator("#tick").check();
-    await page.evaluate(function () { return JournalOps.flush(); });
-    assert.equal(puts.length, 1);
-    const body = decodePut(puts[0]);
-    const problems = [];
-    walkPaths(remote, body, function (pathName) {
-      return pathName === "entries.2026-10-17.updatedAt" || pathName === "entries.2026-10-17.todos[0].done";
-    }, "", problems);
-    assert.deepEqual(problems, []);
-    assert.equal(body.entries["2026-10-17"].fields.focus, "Grok wrote this");
-    assert.equal(body.entries["2026-10-17"].todos[0].done, true);
-    assert.equal(body.habitDefs[0].label, "Thesis 📝");
+    await page.waitForFunction(function () { return JournalSync.status() === "synced"; });
+    assert.deepEqual(writes, []);
+    assert.equal(await page.evaluate(function () { return JournalData.fields("2026-10-17").focus; }), "Grok wrote this");
     assert.equal(await page.evaluate(function () { return localStorage.getItem("journal-v1"); }), "sentinel");
     assert.equal(await page.evaluate(function () { return localStorage.getItem("journal-next-backup"); }), pretty);
     assert.ok(await scrollWidth() <= 360);
@@ -744,11 +599,8 @@ async function main() {
   testDates();
   testReadModel();
   testRollup();
-  testApplyPure();
-  testRoundTripTool();
   testBackupTool();
-  await testSaveQueue();
-  await testNoPutOnServerError();
+  await testReadOnlySync();
   await testViewport();
   console.log("data.test.mjs ok");
 }

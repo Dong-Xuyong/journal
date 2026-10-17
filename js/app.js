@@ -1,6 +1,6 @@
-/* Frame and routing. Data comes from JournalData, saves from JournalOps,
-   and each tab from JournalViews. Morning, evening, week, and month fields
-   stay read-only. */
+/* Frame and routing. Data comes from JournalData, fetches from
+   JournalSync, and each tab from JournalViews. The page is read-only:
+   Robin edits journal.json and this page only shows it. */
 (function (global) {
   "use strict";
 
@@ -11,19 +11,18 @@
   var PERIODS = ["day", "week", "month", "quarter", "year"];
   var STATUS_TEXT = {
     idle: "",
-    pending: "Saving soon",
-    saving: "Saving\u2026",
-    saved: "Saved",
-    error: "Could not save",
+    synced: "Synced",
+    error: "Could not load",
     offline: "Offline"
   };
 
   var Data = global.JournalData;
-  var Ops = global.JournalOps;
+  var Sync = global.JournalSync;
   var UI = global.JournalUI;
   var Views = global.JournalViews = global.JournalViews || {};
 
   var tabs = document.getElementById("tabs");
+  var sections = document.getElementById("sections");
   var crumbs = document.getElementById("crumbs");
   var heading = document.getElementById("period-heading");
   var view = document.getElementById("view");
@@ -36,7 +35,6 @@
   var route = { kind: "", key: "" };
   var paintedVersion = -1;
   var renderQueued = false;
-  var renderWaiting = false;
 
   function readJSON(key) {
     try {
@@ -51,17 +49,12 @@
     return !!(cfg && typeof cfg.token === "string" && cfg.token.trim());
   }
 
-  function hasQueue() {
-    var raw = readJSON("journal-next-ops");
-    return !!(raw && Array.isArray(raw.ops) && raw.ops.length);
-  }
-
   function paintStatus() {
-    var state = Ops.status();
+    var state = Sync.status();
     var text = STATUS_TEXT[state] || "";
     var error = state === "error";
     if (!hasToken()) {
-      text = hasQueue() ? "Saved on this device" : "Not synced";
+      text = "Not synced";
       error = false;
     }
     if (syncLabel.textContent !== text) syncLabel.textContent = text;
@@ -136,23 +129,23 @@
     return "#" + kind + "/" + Data.todayKey(kind);
   }
 
+  function tabLink(href, text, current) {
+    var link = document.createElement("a");
+    link.href = href;
+    link.textContent = text;
+    if (current) link.setAttribute("aria-current", "page");
+    return link;
+  }
+
   function paintTabs() {
+    var periodKind = route.kind === "habits" ? "" : route.kind;
     tabs.textContent = "";
-    ["day", "week", "month", "quarter", "year", "habits"].forEach(function (kind) {
-      var link = document.createElement("a");
-      link.className = "dx-tab";
-      link.href = tabHref(kind);
-      link.textContent = KIND_WORD[kind];
-      if (kind === route.kind) link.setAttribute("aria-current", "page");
-      tabs.appendChild(link);
+    PERIODS.forEach(function (kind) {
+      tabs.appendChild(tabLink(tabHref(kind), KIND_WORD[kind], kind === periodKind));
     });
-    var current = tabs.querySelector("[aria-current='page']");
-    if (current) {
-      if (current.offsetLeft < tabs.scrollLeft) tabs.scrollLeft = Math.max(0, current.offsetLeft - 8);
-      else if (current.offsetLeft + current.offsetWidth > tabs.scrollLeft + tabs.clientWidth) {
-        tabs.scrollLeft = current.offsetLeft + current.offsetWidth - tabs.clientWidth + 8;
-      }
-    }
+    sections.textContent = "";
+    sections.appendChild(tabLink(periodKind ? "#" + periodKind + "/" + route.key : tabHref("day"), "Journal", !!periodKind));
+    sections.appendChild(tabLink(tabHref("habits"), "Habits", route.kind === "habits"));
   }
 
   function habitLabel(id) {
@@ -201,10 +194,7 @@
     today.hidden = !show;
     nextBtn.hidden = !show;
     if (!show) return;
-    prev.textContent = "Prev";
-    nextBtn.textContent = "Next";
-    today.textContent = "Today";
-    prev.setAttribute("aria-label", "Prev " + word);
+    prev.setAttribute("aria-label", "Previous " + word);
     nextBtn.setAttribute("aria-label", "Next " + word);
     today.removeAttribute("aria-label");
     today.disabled = route.key === Data.todayKey(route.kind);
@@ -214,34 +204,18 @@
     connect.hidden = hasToken();
   }
 
-  function editing() {
-    var active = document.activeElement;
-    if (!active || !view.contains(active) || !active.value) return false;
-    return active.tagName === "TEXTAREA" || (active.tagName === "INPUT" && /^(text|search|)$/.test(active.type || ""));
-  }
-
   function focusKey() {
     var active = document.activeElement;
     var holder = active && active.closest ? active.closest("[data-focus]") : null;
     if (!holder || !view.contains(holder)) return null;
-    return {
-      key: holder.getAttribute("data-focus"),
-      start: typeof active.selectionStart === "number" ? active.selectionStart : null,
-      end: typeof active.selectionEnd === "number" ? active.selectionEnd : null
-    };
+    return holder.getAttribute("data-focus");
   }
 
-  function restoreFocus(saved) {
-    var wanted = UI.takeFocus ? UI.takeFocus() : null;
-    var key = wanted || (saved && saved.key);
+  function restoreFocus(key) {
     var target;
     if (!key) return;
     target = view.querySelector('[data-focus="' + key.replace(/["\\]/g, "\\$&") + '"]');
-    if (!target) return;
-    target.focus({ preventScroll: true });
-    if (!wanted && saved && saved.start != null && typeof target.setSelectionRange === "function") {
-      try { target.setSelectionRange(saved.start, saved.end); } catch (e) {}
-    }
+    if (target) target.focus({ preventScroll: true });
   }
 
   function render(opts) {
@@ -277,11 +251,6 @@
     renderQueued = false;
     if (!readRoute()) return;
     if (Data.version && Data.version() === paintedVersion) return;
-    if (editing()) {
-      renderWaiting = true;
-      return;
-    }
-    renderWaiting = false;
     render({ focus: false });
   }
 
@@ -291,10 +260,6 @@
     renderQueued = true;
     global.setTimeout(refresh, 0);
   }
-
-  view.addEventListener("focusout", function () {
-    if (renderWaiting) global.setTimeout(refresh, 0);
-  });
 
   function go(delta) {
     var key;
@@ -322,7 +287,7 @@
     if (route.kind && route.kind !== "habits") location.hash = "#" + route.kind + "/" + Data.todayKey(route.kind);
   });
   connectBtn.addEventListener("click", function () {
-    var token = global.prompt("Paste a GitHub token that can read and write your journal file. It stays in this browser.");
+    var token = global.prompt("Paste a GitHub token that can read your journal file. It stays in this browser.");
     var cfg;
     if (!token || !String(token).trim()) return;
     cfg = readJSON(TOKEN_KEY) || {};
@@ -330,14 +295,14 @@
     if (!cfg.repo) cfg.repo = DEFAULT_REPO;
     localStorage.setItem(TOKEN_KEY, JSON.stringify(cfg));
     paintConnect();
-    Ops.pull().then(function () { if (hasQueue()) Ops.flush(); });
+    Sync.pull();
   });
-  Ops.onChange(queueRefresh);
+  Sync.onChange(queueRefresh);
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") Ops.pull();
+    if (document.visibilityState === "visible") Sync.pull();
   });
   global.setInterval(function () {
-    if (document.visibilityState !== "hidden") Ops.pull();
+    if (document.visibilityState !== "hidden") Sync.pull();
   }, PULL_EVERY);
   window.addEventListener("hashchange", showRoute);
   paintStatus();

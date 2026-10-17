@@ -1,4 +1,5 @@
-/* Reflections. Append-only answers; app.js re-renders after each change. */
+/* Reflections, read-only and always open on the main view. Answers are
+   Dong's own text and are shown exactly as stored. */
 (function () {
   "use strict";
 
@@ -16,8 +17,8 @@
   ];
 
   function apis() {
-    if (!window.JournalData || !window.JournalOps || !window.JournalUI || !window.JournalUI.fold || !window.JournalUI.announce) {
-      throw new Error("JournalReflect needs JournalData, JournalOps, and JournalUI");
+    if (!window.JournalData || !window.JournalUI || !window.JournalUI.card) {
+      throw new Error("JournalReflect needs JournalData and JournalUI");
     }
   }
 
@@ -137,10 +138,6 @@
     return total;
   }
 
-  function answerPhrase(n) {
-    return n === 1 ? "1 answer" : String(n) + " answers";
-  }
-
   function dateLabel(date) {
     var label = "";
     if (window.JournalData && typeof window.JournalData.label === "function") {
@@ -153,21 +150,10 @@
     return window.JournalUI.plain(String(text || ""));
   }
 
-  function makeFold(spec) {
-    var opts = {
-      id: spec.id,
-      title: spec.title,
-      level: spec.level,
-      summary: spec.summary
-    };
-    if (spec.emoji) opts.emoji = spec.emoji;
-    var folded = window.JournalUI.fold(opts);
-    addClass(folded.root, "reflect-fold");
-    if (spec.extraClass) addClass(folded.root, spec.extraClass);
-    folded.root.addEventListener("click", function (event) {
-      event.stopPropagation();
-    });
-    return folded;
+  function makeCard(id, title) {
+    var made = window.JournalUI.card({ id: id, title: title, level: 3, emoji: REFLECT_EMOJI });
+    addClass(made.root, "reflect-card");
+    return made;
   }
 
   function history(list, emptyText) {
@@ -191,166 +177,47 @@
     return ul;
   }
 
-  function domId(scope, id) {
-    return "reflect-" + scope + "-" + String(id || "").replace(/[^A-Za-z0-9_-]/g, "-");
-  }
-
-  function commit(id, value, date, note) {
-    var text = String(value || "").replace(/^\s+|\s+$/g, "");
-    var added;
-    if (!text) {
-      if (note) {
-        note.hidden = false;
-        note.textContent = "Write an answer first.";
-      }
-      window.JournalUI.announce("Write an answer first.");
-      return;
-    }
-    added = window.JournalOps.appendAnswer(id, { date: date, text: text });
-    if (added === false) {
-      if (note) {
-        note.hidden = false;
-        note.textContent = "That answer is already saved.";
-      }
-      window.JournalUI.announce("That answer is already saved.");
-      return;
-    }
-    window.JournalUI.announce("Answer saved.");
-    return true;
-  }
-
-  function editor(question, number, date, scope) {
-    var wrap = node("div", "reflect-editor");
-    var label = node("label", "reflect-field");
-    var box = node("textarea", "reflect-box");
-    var actions = node("div", "reflect-actions");
-    var save = node("button", "dx-btn reflect-save", "Save");
-    var note = node("p", "reflect-note");
-    var fieldId = domId(scope, question.id);
-    box.id = fieldId;
-    box.setAttribute("data-focus", "reflect:" + scope + ":" + question.id + ":box");
-    save.setAttribute("data-focus", "reflect:" + scope + ":" + question.id + ":save");
-    box.rows = 4;
-    box.setAttribute("aria-keyshortcuts", "Control+Enter Meta+Enter");
-    label.setAttribute("for", fieldId);
-    label.appendChild(node("span", "reflect-question", shownQuestion(question.text || "")));
-    label.appendChild(box);
-    save.type = "button";
-    save.setAttribute("aria-label", "Save answer for question " + number);
-    note.hidden = true;
-    actions.appendChild(save);
-    actions.appendChild(note);
-    wrap.appendChild(label);
-    wrap.appendChild(actions);
-    function run() {
-      if (commit(question.id, box.value, date, note)) box.value = "";
-    }
-    save.addEventListener("click", run);
-    box.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        run();
-      }
-    });
-    return wrap;
-  }
-
   function buildDay(day) {
     var data = readData();
     var picked = pickQuestion(data.questions, day);
-    var answered = countAnswered(data.questions, data.answers, null);
-    var line = "Reflection · today: Q" + (picked ? picked.number : 0) + " · " + answered + " answered";
-    var folded = makeFold({
-      id: "day:reflection",
-      title: "Reflection",
-      level: 3,
-      summary: line,
-      emoji: REFLECT_EMOJI
-    });
-    var today;
-    var allLine;
-    var all;
-    var i;
-    var item;
-    var list;
-    var qLine;
-    var qFold;
-    folded.root.setAttribute("data-reflect", "day");
-    if (!picked) return folded.root;
-    folded.root.setAttribute("data-question-id", picked.question.id);
-    today = node("div", "reflect-today");
-    today.appendChild(node("p", "reflect-kicker", "Question " + picked.number + " of " + data.questions.length));
-    today.appendChild(editor(picked.question, picked.number, day, "today"));
-    today.appendChild(history(newestFirst(answerList(data.answers, picked.question.id), null), "No answer yet."));
-    folded.body.appendChild(today);
-    allLine = "All " + data.questions.length + (data.questions.length === 1 ? " question" : " questions");
-    all = makeFold({
-      id: "day:reflection-all",
-      title: allLine,
-      level: 4,
-      summary: allLine
-    });
-    addClass(all.root, "reflect-all");
-    for (i = 0; i < data.questions.length; i++) {
-      item = data.questions[i];
-      list = answerList(data.answers, item.id);
-      qLine = "Question " + (i + 1) + " · " + answerPhrase(list.length);
-      qFold = makeFold({
-        id: "day:reflection:" + item.id,
-        title: "Question " + (i + 1),
-        level: 5,
-        summary: qLine
-      });
-      qFold.root.setAttribute("data-question-id", item.id);
-      qFold.root.setAttribute("data-question-number", String(i + 1));
-      qFold.body.appendChild(editor(item, i + 1, day, "q"));
-      qFold.body.appendChild(history(newestFirst(list, null), "No answer yet."));
-      all.body.appendChild(qFold.root);
+    var made = makeCard("day:reflection", "Reflection");
+    var body = made.body;
+    made.root.setAttribute("data-reflect", "day");
+    if (!picked) {
+      body.appendChild(node("p", "reflect-empty", "No questions yet."));
+      return made.root;
     }
-    folded.body.appendChild(all.root);
-    return folded.root;
+    made.root.setAttribute("data-question-id", picked.question.id);
+    body.appendChild(node("p", "reflect-kicker", "Question " + picked.number + " of " + data.questions.length));
+    body.appendChild(node("p", "reflect-question", shownQuestion(picked.question.text || "")));
+    body.appendChild(history(newestFirst(answerList(data.answers, picked.question.id), null), "No answer yet."));
+    return made.root;
   }
 
   function buildYear(year) {
     var data = readData();
     var answered = countAnswered(data.questions, data.answers, year);
-    var line = "Reflection · " + year + " · " + answered + " answered";
-    var folded = makeFold({
-      id: "year:reflection:" + year,
-      title: "Reflection",
-      level: 3,
-      summary: line,
-      emoji: REFLECT_EMOJI
-    });
+    var made = makeCard("year:reflection:" + year, "Reflection");
+    var body = made.body;
     var i;
     var item;
     var list;
-    var qLine;
-    var qFold;
-    var digest;
-    folded.root.setAttribute("data-reflect", "year");
-    folded.root.setAttribute("data-year", year);
+    var block;
+    made.root.setAttribute("data-reflect", "year");
+    made.root.setAttribute("data-year", year);
+    body.appendChild(node("p", "reflect-kicker", answered + " of " + data.questions.length + " questions answered in " + year));
     for (i = 0; i < data.questions.length; i++) {
       item = data.questions[i];
       list = newestFirst(answerList(data.answers, item.id), year);
-      qLine = "Question " + (i + 1) + " · " + answerPhrase(list.length);
-      qFold = makeFold({
-        id: "year:reflection:" + year + ":" + item.id,
-        title: "Question " + (i + 1),
-        level: 4,
-        summary: qLine
-      });
-      qFold.root.setAttribute("data-question-id", item.id);
-      qFold.root.setAttribute("data-question-number", String(i + 1));
-      digest = node("div", "reflect-digest");
-      digest.appendChild(node("p", "reflect-question", shownQuestion(item.text || "")));
-      digest.appendChild(node("p", "reflect-count", answerPhrase(list.length) + " in " + year));
-      if (!list.length) digest.appendChild(node("p", "reflect-empty", "No answer this year."));
-      else digest.appendChild(history([list[0]], "No answer this year."));
-      qFold.body.appendChild(digest);
-      folded.body.appendChild(qFold.root);
+      if (!list.length) continue;
+      block = node("div", "reflect-digest");
+      block.setAttribute("data-question-id", item.id);
+      block.setAttribute("data-question-number", String(i + 1));
+      block.appendChild(node("p", "reflect-question", "Q" + (i + 1) + " " + shownQuestion(item.text || "")));
+      block.appendChild(history([list[0]], ""));
+      body.appendChild(block);
     }
-    return folded.root;
+    return made.root;
   }
 
   function render(record) {
