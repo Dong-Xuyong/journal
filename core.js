@@ -270,6 +270,132 @@
     return out;
   }
 
+  var REFLECTION_QUESTIONS = [
+    { id: "q1", text: "If I knew I couldn't fail, what would I like to do?" },
+    { id: "q2", text: "Even if I knew I would fail, what would I like to do anyway?" },
+    { id: "q3", text: "If I had all the time and money in the world, but I had to use 40 hours a week to be of service to other people, what would I do?" },
+    { id: "q4", text: "If I was giving a TED talk 40 years from now and the audience is giving it a standing ovation, what would I like to have talked about?" },
+    { id: "q5", text: "What do I want people to say about me at my funeral?" },
+    { id: "q6", text: "What do I want written about myself in my obituary?" },
+    { id: "q7", text: "If I continued on this exact path, where would I end up five years from now? And is that where I want to end up?" },
+    { id: "q8", text: "If I took a completely different path to what I'm doing right now, where might I end up five years from now?" },
+    { id: "q9", text: "If I took a completely different path and did not care about money or what other people thought of me, where might I end up?" }
+  ];
+
+  function reflectionQuestions() {
+    return JSON.parse(JSON.stringify(REFLECTION_QUESTIONS));
+  }
+
+  function questionList(raw) {
+    var out = [];
+    var seen = Object.create(null);
+    var list = isRecord(raw) && Array.isArray(raw.questions) ? raw.questions : [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var item = list[i];
+      if (!isRecord(item) || typeof item.id !== "string" || item.id.length === 0) continue;
+      if (seen[item.id]) continue;
+      seen[item.id] = true;
+      out.push({ id: item.id, text: typeof item.text === "string" ? item.text : "" });
+    }
+    return out;
+  }
+
+  function cleanAnswers(list) {
+    var out = [];
+    var i;
+    if (!Array.isArray(list)) return out;
+    for (i = 0; i < list.length; i++) {
+      var item = list[i];
+      if (!isRecord(item) || typeof item.text !== "string" || item.text.trim().length === 0) continue;
+      out.push({ date: typeof item.date === "string" ? item.date : "", text: item.text });
+    }
+    return out;
+  }
+
+  function mergeAnswerLists(localList, remoteList) {
+    var out = [];
+    var seen = Object.create(null);
+    function add(list) {
+      var cleaned = cleanAnswers(list);
+      var i;
+      for (i = 0; i < cleaned.length; i++) {
+        var item = cleaned[i];
+        var key = item.date + "\n" + item.text;
+        if (seen[key]) continue;
+        seen[key] = true;
+        out.push(item);
+      }
+    }
+    add(localList);
+    add(remoteList);
+    out.sort(function (a, b) {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return 0;
+    });
+    return out;
+  }
+
+  function answerMap(raw) {
+    var out = {};
+    var source = isRecord(raw) && isRecord(raw.answers) ? raw.answers : {};
+    var keys = Object.keys(source);
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var cleaned = cleanAnswers(source[keys[i]]);
+      if (cleaned.length) out[keys[i]] = cleaned;
+    }
+    return out;
+  }
+
+  // Questions: remote text wins. Answers: append-only union, one copy of the same date and text.
+  function mergeReflections(localRaw, remoteRaw) {
+    var questions = [];
+    var indexOf = Object.create(null);
+    function addQs(list) {
+      var i;
+      for (i = 0; i < list.length; i++) {
+        var item = list[i];
+        if (Object.prototype.hasOwnProperty.call(indexOf, item.id)) {
+          if (!questions[indexOf[item.id]].text && item.text) questions[indexOf[item.id]].text = item.text;
+          continue;
+        }
+        indexOf[item.id] = questions.length;
+        questions.push({ id: item.id, text: item.text });
+      }
+    }
+    addQs(questionList(remoteRaw));
+    addQs(questionList(localRaw));
+    var localAnswers = answerMap(localRaw);
+    var remoteAnswers = answerMap(remoteRaw);
+    var ids = Object.create(null);
+    var keys = Object.keys(localAnswers).concat(Object.keys(remoteAnswers));
+    var answers = {};
+    var i;
+    for (i = 0; i < keys.length; i++) ids[keys[i]] = true;
+    keys = Object.keys(ids);
+    for (i = 0; i < keys.length; i++) {
+      var merged = mergeAnswerLists(localAnswers[keys[i]], remoteAnswers[keys[i]]);
+      if (merged.length) answers[keys[i]] = merged;
+    }
+    return { questions: questions, answers: answers };
+  }
+
+  function reflectionsOf(store) {
+    var raw = store && isRecord(store.reflections) ? store.reflections : null;
+    var questions = raw ? questionList(raw) : [];
+    if (!questions.length) questions = reflectionQuestions();
+    return { questions: questions, answers: answerMap(raw) };
+  }
+
+  function reflectionIndex(day, count) {
+    var n = count > 0 ? count : REFLECTION_QUESTIONS.length;
+    var days = Math.floor(Date.UTC(Number(String(day).slice(0, 4)), Number(String(day).slice(5, 7)) - 1, Number(String(day).slice(8, 10))) / 86400000);
+    if (days !== days) return 0;
+    return ((days % n) + n) % n;
+  }
+
   function mergeEntries(left, right) {
     var names = Object.keys(left).concat(Object.keys(right));
     var out = {};
@@ -297,6 +423,7 @@
       if (key === "version") out.version = Math.max(versionOf(left), versionOf(right));
       else if (key === "entries") out.entries = mergeEntries(entriesOf(left), entriesOf(right));
       else if (key === "quotes") out.quotes = mergeMap(quotesOf(left), quotesOf(right));
+      else if (key === "reflections") out.reflections = mergeReflections(left.reflections, right.reflections);
       else if (Object.prototype.hasOwnProperty.call(right, key)) out[key] = cloneData(right[key]);
       else out[key] = cloneData(left[key]);
     }
@@ -457,7 +584,10 @@
     currentStreak: currentStreak,
     bestStreak: bestStreak,
     dayCompletion: dayCompletion,
-    habitStats: habitStats
+    habitStats: habitStats,
+    reflectionQuestions: reflectionQuestions,
+    reflectionsOf: reflectionsOf,
+    reflectionIndex: reflectionIndex
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -465,7 +595,7 @@
 
   if (typeof require === "function" && typeof module !== "undefined" && require.main === module) {
     var assert = require("assert");
-    var names = ["dayKey", "weekKey", "monthKey", "quarterKey", "yearKey", "kindOf", "shift", "label", "weekDays", "parentKey", "todayKey", "blankStore", "mergeStores", "defaultHabitDefs", "habitDefsOf", "habitStatus", "currentStreak", "bestStreak", "dayCompletion", "habitStats"];
+    var names = ["dayKey", "weekKey", "monthKey", "quarterKey", "yearKey", "kindOf", "shift", "label", "weekDays", "parentKey", "todayKey", "blankStore", "mergeStores", "defaultHabitDefs", "habitDefsOf", "habitStatus", "currentStreak", "bestStreak", "dayCompletion", "habitStats", "reflectionQuestions", "reflectionsOf", "reflectionIndex"];
     var n;
     for (n = 0; n < names.length; n++) assert.strictEqual(typeof api[names[n]], "function");
 
@@ -688,6 +818,86 @@
     assert.strictEqual(stats.perHabit.training.done, 3);
     assert.strictEqual(stats.perHabit.training.rate, 0.75);
     assert.strictEqual(stats.perHabit.sunlight.done, 0);
+
+    var seeded = reflectionsOf({ version: 1, entries: {} });
+    assert.strictEqual(seeded.questions.length, 9);
+    assert.strictEqual(seeded.questions[0].id, "q1");
+    assert.strictEqual(seeded.questions[0].text, "If I knew I couldn't fail, what would I like to do?");
+    assert.strictEqual(seeded.questions[1].text, "Even if I knew I would fail, what would I like to do anyway?");
+    assert.strictEqual(seeded.questions[2].text, "If I had all the time and money in the world, but I had to use 40 hours a week to be of service to other people, what would I do?");
+    assert.strictEqual(seeded.questions[3].text, "If I was giving a TED talk 40 years from now and the audience is giving it a standing ovation, what would I like to have talked about?");
+    assert.strictEqual(seeded.questions[4].text, "What do I want people to say about me at my funeral?");
+    assert.strictEqual(seeded.questions[5].text, "What do I want written about myself in my obituary?");
+    assert.strictEqual(seeded.questions[6].text, "If I continued on this exact path, where would I end up five years from now? And is that where I want to end up?");
+    assert.strictEqual(seeded.questions[7].text, "If I took a completely different path to what I'm doing right now, where might I end up five years from now?");
+    assert.strictEqual(seeded.questions[8].text, "If I took a completely different path and did not care about money or what other people thought of me, where might I end up?");
+    assert.deepStrictEqual(seeded.answers, {});
+    var bare = { version: 1, entries: {} };
+    reflectionsOf(bare);
+    assert.strictEqual(bare.reflections, undefined);
+    var covered = Object.create(null);
+    var cursor = "2026-01-01";
+    for (n = 0; n < 9; n++) {
+      covered[reflectionIndex(cursor, 9)] = true;
+      cursor = shift(cursor, 1);
+    }
+    assert.strictEqual(Object.keys(covered).length, 9);
+    assert.strictEqual((reflectionIndex("2026-10-14", 9) + 1) % 9, reflectionIndex("2026-10-15", 9));
+    assert.strictEqual(reflectionIndex("2026-10-14", 9), reflectionIndex("2026-10-14", 9));
+
+    var reflectLocal = {
+      version: 1,
+      entries: {},
+      quotes: {},
+      reflections: {
+        questions: [{ id: "q1", text: "local wording" }, { id: "extra", text: "A question only on this device" }],
+        answers: {
+          q1: [{ date: "2026-10-14", text: "Ship" }],
+          extra: [{ date: "2026-10-01", text: "Local only" }]
+        }
+      }
+    };
+    var reflectRemote = {
+      version: 1,
+      entries: {},
+      quotes: {},
+      reflections: {
+        questions: [{ id: "q1", text: "If I knew I couldn't fail, what would I like to do?" }],
+        answers: {
+          q1: [
+            { date: "2026-10-14", text: "Ship" },
+            { date: "2026-10-13", text: "Earlier thought" }
+          ]
+        }
+      }
+    };
+    var reflectLocalJson = JSON.stringify(reflectLocal);
+    var reflectRemoteJson = JSON.stringify(reflectRemote);
+    var reflectMerged = mergeStores(reflectLocal, reflectRemote);
+    assert.strictEqual(JSON.stringify(reflectLocal), reflectLocalJson);
+    assert.strictEqual(JSON.stringify(reflectRemote), reflectRemoteJson);
+    assert.strictEqual(reflectMerged.reflections.questions[0].text, "If I knew I couldn't fail, what would I like to do?");
+    assert.strictEqual(reflectMerged.reflections.questions[1].id, "extra");
+    assert.strictEqual(reflectMerged.reflections.answers.q1.length, 2);
+    assert.strictEqual(reflectMerged.reflections.answers.q1[0].date, "2026-10-13");
+    assert.strictEqual(reflectMerged.reflections.answers.q1[0].text, "Earlier thought");
+    assert.strictEqual(reflectMerged.reflections.answers.q1[1].text, "Ship");
+    assert.strictEqual(reflectMerged.reflections.answers.extra[0].text, "Local only");
+    reflectMerged.reflections.answers.q1[1].text = "mutated";
+    assert.strictEqual(reflectLocal.reflections.answers.q1[0].text, "Ship");
+    assert.strictEqual(reflectRemote.reflections.answers.q1[1].text, "Earlier thought");
+    var reflectOnlyLocal = mergeStores(
+      { version: 1, entries: {}, reflections: { questions: [{ id: "q2", text: "Keep" }], answers: { q2: [{ date: "2026-10-02", text: "Anyway" }] } } },
+      { version: 1, entries: {}, quotes: {} }
+    );
+    assert.strictEqual(reflectOnlyLocal.reflections.answers.q2[0].text, "Anyway");
+    var reflectOnlyRemote = mergeStores(
+      { version: 1, entries: {} },
+      { version: 1, entries: {}, reflections: { questions: [{ id: "q3", text: "Service" }], answers: { q3: [{ date: "2026-10-03", text: "Teach" }] } } }
+    );
+    assert.strictEqual(reflectOnlyRemote.reflections.questions[0].id, "q3");
+    assert.strictEqual(reflectOnlyRemote.reflections.answers.q3[0].text, "Teach");
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(mergeStores({ version: 1, entries: {} }, { version: 1, entries: {} }), "reflections"), false);
 
     console.log("core ok");
   }

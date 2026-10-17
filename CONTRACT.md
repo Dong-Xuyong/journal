@@ -104,12 +104,40 @@ Week and month fields live on that entry, inside `fields`:
 
 `goals` is not `goalsReview`. Keep the existing review fields as they are.
 
+## Reflections
+
+`reflections` is an optional top-level object, a sibling of `entries` and `quotes`. Omit the key until there is something to store. The website shows the nine questions below when the key is missing, and it writes the key on the first saved answer.
+
+```json
+{
+  "questions": [ { "id": "q1", "text": "If I knew I couldn't fail, what would I like to do?" } ],
+  "answers": { "q1": [ { "date": "2026-10-17", "text": "Write the book." } ] }
+}
+```
+
+- `questions` is `{ "id", "text" }`. Ids stay stable. The website rotates the question of the day by date through this list.
+- `answers` is append-only. Each value is an array of `{ "date", "text" }`. `date` is the day key `YYYY-MM-DD`. Add a new object. Do not edit or delete an earlier answer.
+- The same `date` and `text` should appear once. A later different answer on that day is a new object.
+- On sync, the website keeps every answer from either copy and keeps the remote question text when both copies have that id.
+
+If `questions` is missing or empty, the website uses these, in order:
+
+1. `q1`. If I knew I couldn't fail, what would I like to do?
+2. `q2`. Even if I knew I would fail, what would I like to do anyway?
+3. `q3`. If I had all the time and money in the world, but I had to use 40 hours a week to be of service to other people, what would I do?
+4. `q4`. If I was giving a TED talk 40 years from now and the audience is giving it a standing ovation, what would I like to have talked about?
+5. `q5`. What do I want people to say about me at my funeral?
+6. `q6`. What do I want written about myself in my obituary?
+7. `q7`. If I continued on this exact path, where would I end up five years from now? And is that where I want to end up?
+8. `q8`. If I took a completely different path to what I'm doing right now, where might I end up five years from now?
+9. `q9`. If I took a completely different path and did not care about money or what other people thought of me, where might I end up?
+
 ## Write rules
 
 - Set `updatedAt` to the current UTC ISO-8601 time on every entry you change. The website keeps the entry with the newer `updatedAt`.
-- The user edits only `todos` on the website, and it saves them back to this file automatically. Always read the latest file before writing so you keep the user's ticked, added, edited, or deleted to-dos.
+- The user edits `todos` and reflection answers on the website, and it saves them back to this file automatically. Always read the latest file before writing so you keep the user's ticked, added, edited, or deleted to-dos and any reflection answers.
 - Read the file first, modify it, then PUT with the `sha` from the GET so you never clobber a newer version. On 409, GET again and retry once.
 - Never delete an entry you did not intend to change. Preserve every other key and its fields.
-- Preserve top-level `habitDefs` and any other top-level keys you are not editing. Preserve `habits` and `habitStreaks` on day entries. The website keeps those when it saves to-dos, and a save that rebuilds the file without them will wipe the habit log.
+- Preserve top-level `habitDefs`, `reflections`, and any other top-level keys you are not editing. Preserve `habits` and `habitStreaks` on day entries. The website keeps those when it saves, and a save that rebuilds the file without them will wipe the habit log or the reflection answers.
 - Repo: `Dong-Xuyong/progress-sync`. Path: `journal.json`. API: `PUT https://api.github.com/repos/Dong-Xuyong/progress-sync/contents/journal.json` with `Authorization: Bearer <token>`, `message` `"Save journal progress"`, `content` as base64 of the full JSON, and `sha`.
 - Token: a fine-grained PAT with Contents read and write on `Dong-Xuyong/progress-sync` only. Do not put the token in the repo.

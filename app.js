@@ -852,6 +852,131 @@
     return section;
   }
 
+  function appendReflection(id, text, date) {
+    var trimmed = String(text || "").trim();
+    var raw;
+    var list;
+    var last;
+    if (!trimmed || !id) return false;
+    raw = store.reflections;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      store.reflections = { questions: JournalCore.reflectionQuestions(), answers: {} };
+      raw = store.reflections;
+    }
+    if (!Array.isArray(raw.questions) || !raw.questions.length) raw.questions = JournalCore.reflectionQuestions();
+    if (!raw.answers || typeof raw.answers !== "object" || Array.isArray(raw.answers)) raw.answers = {};
+    list = raw.answers[id];
+    if (!Array.isArray(list)) list = [];
+    last = list.length ? list[list.length - 1] : null;
+    if (last && last.date === date && String(last.text || "") === trimmed) return false;
+    list.push({ date: date, text: trimmed });
+    raw.answers[id] = list;
+    persist();
+    scheduleSave();
+    return true;
+  }
+
+  function reflectionAnswers(id) {
+    var data = JournalCore.reflectionsOf(store);
+    var list = data.answers && data.answers[id];
+    return Array.isArray(list) ? list.slice().reverse() : [];
+  }
+
+  function reflectionHistory(id) {
+    var list = reflectionAnswers(id);
+    var ul;
+    if (!list.length) return node("p", "reflect-note", "No answer yet.");
+    ul = node("ul", "reflect-answers");
+    list.forEach(function (item) {
+      var li = node("li");
+      li.setAttribute("data-answer-date", item.date);
+      li.appendChild(node("span", "reflect-when", JournalCore.label(item.date) || item.date));
+      li.appendChild(node("p", "val", item.text));
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
+  function mountReflections(dayKey) {
+    var data = JournalCore.reflectionsOf(store);
+    var questions = data.questions;
+    var index = JournalCore.reflectionIndex(dayKey, questions.length);
+    var question = questions[index];
+    var section = node("details", "card dx-card reflections");
+    var summary = node("summary", "", "Reflection questions");
+    var box = node("textarea", "reflect-box");
+    var save = button("dx-btn", "Save");
+    var note = node("p", "reflect-note", "");
+    var actions = node("div", "reflect-actions");
+    var all = node("details", "reflect-all");
+    section.open = true;
+    section.setAttribute("data-reflections", "1");
+    section.setAttribute("data-question-id", question.id);
+    section.setAttribute("data-reflection-index", String(index));
+    summary.appendChild(node("span", "reflect-count", questions.length + " questions"));
+    section.appendChild(summary);
+    section.appendChild(node("p", "reflect-kicker", "Question " + (index + 1) + " of " + questions.length));
+    section.appendChild(node("p", "reflect-question", question.text));
+    box.rows = 4;
+    box.setAttribute("aria-label", "Answer for today");
+    box.setAttribute("placeholder", "Write the answer, then save it.");
+    save.setAttribute("data-save-reflection", question.id);
+    actions.appendChild(save);
+    actions.appendChild(note);
+    section.appendChild(box);
+    section.appendChild(actions);
+    section.appendChild(reflectionHistory(question.id));
+    all.appendChild(node("summary", "", "All questions"));
+    questions.forEach(function (item, itemIndex) {
+      var block = node("article", "reflect-item");
+      var itemBox;
+      var itemSave;
+      var itemNote;
+      var itemActions;
+      block.setAttribute("data-question-id", item.id);
+      block.appendChild(node("h4", "", (itemIndex + 1) + ". " + item.text));
+      block.appendChild(reflectionHistory(item.id));
+      if (item.id !== question.id) {
+        itemBox = node("textarea", "reflect-box");
+        itemBox.rows = 3;
+        itemBox.setAttribute("aria-label", "Answer");
+        itemSave = button("dx-btn dx-btn--ghost", "Save");
+        itemSave.setAttribute("data-save-reflection", item.id);
+        itemNote = node("p", "reflect-note", "");
+        itemActions = node("div", "reflect-actions");
+        itemActions.appendChild(itemSave);
+        itemActions.appendChild(itemNote);
+        itemSave.addEventListener("click", function () {
+          if (!appendReflection(item.id, itemBox.value, dayKey)) {
+            if (!String(itemBox.value || "").trim()) itemNote.textContent = "Write an answer first.";
+            return;
+          }
+          replaceReflections(section, dayKey, true);
+        });
+        block.appendChild(itemBox);
+        block.appendChild(itemActions);
+      }
+      all.appendChild(block);
+    });
+    section.appendChild(all);
+    save.addEventListener("click", function () {
+      var allOpen = all.open;
+      if (!appendReflection(question.id, box.value, dayKey)) {
+        if (!String(box.value || "").trim()) note.textContent = "Write an answer first.";
+        return;
+      }
+      replaceReflections(section, dayKey, allOpen);
+    });
+    return section;
+  }
+
+  function replaceReflections(section, dayKey, allOpen) {
+    var next = mountReflections(dayKey);
+    var nextAll = next.querySelector(".reflect-all");
+    if (allOpen && nextAll) nextAll.open = true;
+    section.replaceWith(next);
+  }
+
   function refreshPractice() {
     var old;
     var fields;
@@ -897,8 +1022,10 @@
     }
     if (schema.moodStrip) els.form.appendChild(mountStrip(cur.key, trends));
     else if (trends) els.form.appendChild(mountFeelings(trends));
-    if (cur.kind === "day") els.form.appendChild(mountDayPractice(fields, todoList(store.entries[cur.key])));
-    else if (cur.kind === "week" || cur.kind === "month") els.form.appendChild(mountPeriodPractice(fields, trends));
+    if (cur.kind === "day") {
+      els.form.appendChild(mountDayPractice(fields, todoList(store.entries[cur.key])));
+      els.form.appendChild(mountReflections(cur.key));
+    } else if (cur.kind === "week" || cur.kind === "month") els.form.appendChild(mountPeriodPractice(fields, trends));
 
     schema.sections.forEach(function (section) {
       var box = card(section.title);

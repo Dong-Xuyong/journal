@@ -1069,6 +1069,100 @@ html.dark .nudge.ease { color: #fdba74; }
 
 .habit-open-label { color: var(--dx-accent); }
 
+.reflections { padding-bottom: 14px; }
+.reflections > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.reflections > summary::-webkit-details-marker { display: none; }
+.reflect-count {
+  color: var(--dx-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.reflect-kicker {
+  margin: 0;
+  color: var(--dx-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.reflect-question {
+  margin: 6px 0 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.reflect-box {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  box-sizing: border-box;
+  border: 1px solid var(--dx-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  color: inherit;
+  background: var(--dx-card-solid);
+  resize: vertical;
+}
+.reflect-box:focus {
+  outline: none;
+  border-color: var(--dx-accent);
+}
+.reflect-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.reflect-note {
+  margin: 0;
+  color: var(--dx-muted);
+  font-size: 0.8rem;
+}
+.reflect-answers {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.reflect-answers li {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--dx-accent-soft);
+}
+.reflect-when {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--dx-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.reflect-answers .val { white-space: pre-wrap; }
+.reflect-all { margin-top: 4px; }
+.reflect-all > summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin: 4px 0 8px;
+}
+.reflect-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--dx-border);
+}
+.reflect-item h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
 @media (min-width: 560px) {
   .practice .meters { grid-template-columns: 1fr 1fr 1.15fr; }
   .feeling-meter { grid-column: auto; }
