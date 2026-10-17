@@ -82,6 +82,7 @@ function harness(data) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Habits</title>
   <link rel="stylesheet" href="/ui/shell.css" />
+  <link rel="stylesheet" href="/journal/next/css/base.css" />
   <link rel="stylesheet" href="/journal/next/css/habits.css" />
   <style>
     html, body { margin: 0; background: #f6f4ef; }
@@ -98,8 +99,7 @@ function harness(data) {
     <h2 id="period" tabindex="-1">Habits</h2>
     <div id="view"></div>
   </main>
-  <div id="live" class="sr-only" aria-live="polite"></div>
-  <script src="/journal/core.js"></script>
+  <div id="announce" class="sr-only" aria-live="polite"></div>
   <script src="/journal/next/js/gamify.js"></script>
   <script>
     window.__fixture = ${json};
@@ -115,126 +115,12 @@ function harness(data) {
       if (opts && String(opts.method || "GET").toUpperCase() === "PUT") window.__puts += 1;
       return origFetch.apply(this, arguments);
     };
-    window.JournalData = {
-      load: function (raw) { this.raw = raw; },
-      entry: function (key) { return (this.raw.entries && this.raw.entries[key]) || null; },
-      fields: function (key) { var entry = this.entry(key); return entry && entry.fields || {}; },
-      todos: function (key) { var entry = this.entry(key); return entry && entry.todos || []; },
-      quote: function (day) { return this.raw.quotes && this.raw.quotes[day] || null; },
-      moodOf: function () { return null; },
-      energyOf: function () { return null; },
-      sleepOf: function () { return null; },
-      habitDefs: function () { return JournalCore.habitDefsOf(this.raw); },
-      habitStatus: function (day, id) { return JournalCore.habitStatus(this.entry(day), id); },
-      reflections: function () { return { questions: [], answers: {} }; },
-      questionOfDay: function () { return null; },
-      children: function (key) {
-        if (JournalCore.kindOf(key) === "week") return JournalCore.weekDays(key);
-        return [];
-      },
-      ancestors: function () { return []; },
-      daysIn: function (key, through) {
-        var kind = JournalCore.kindOf(key);
-        var days = [];
-        var d;
-        var last;
-        if (kind === "week") days = JournalCore.weekDays(key);
-        else if (kind === "month") {
-          last = new Date(Date.UTC(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0)).getUTCDate();
-          for (d = 1; d <= last; d++) days.push(key + "-" + (d < 10 ? "0" : "") + d);
-        }
-        if (!through) return days;
-        return days.filter(function (day) { return day <= through; });
-      },
-      rollup: function () { return null; },
-      shift: function (key, delta) { return JournalCore.shift(key, delta); },
-      label: function (key) { return JournalCore.label(key); },
-      kindOf: function (key) { return JournalCore.kindOf(key); },
-      todayKey: function (kind, date) { return JournalCore.todayKey(kind, date); }
-    };
-    JournalData.load(window.__fixture);
-    var tipSeq = 0;
-    window.JournalUI = {
-      el: function (tag, className, text) {
-        var el = document.createElement(tag);
-        if (className) el.className = className;
-        if (text != null) el.textContent = text;
-        return el;
-      },
-      fold: function (opts) {
-        var root = document.createElement("details");
-        var summary = document.createElement("summary");
-        var heading = document.createElement("h3");
-        var line = document.createElement("span");
-        var body = document.createElement("div");
-        var saved = {};
-        heading.textContent = opts.title;
-        line.className = "fold-line";
-        line.textContent = opts.summary || "";
-        summary.appendChild(heading);
-        summary.appendChild(document.createTextNode(" "));
-        summary.appendChild(line);
-        root.appendChild(summary);
-        root.appendChild(body);
-        function saveFold() {
-          var current = {};
-          try { current = JSON.parse(localStorage.getItem("journal-folds") || "{}"); } catch (e) { current = {}; }
-          current[opts.id] = !!root.open;
-          localStorage.setItem("journal-folds", JSON.stringify(current));
-        }
-        try { saved = JSON.parse(localStorage.getItem("journal-folds") || "{}"); } catch (e) { saved = {}; }
-        if (saved && saved[opts.id]) root.open = true;
-        root.addEventListener("toggle", saveFold);
-        // This Chrome build toggles <details> without a toggle event when the summary contains a heading.
-        summary.addEventListener("click", function () { setTimeout(saveFold, 0); });
-        summary.addEventListener("keyup", function (event) {
-          if (event.key === "Enter" || event.key === " ") saveFold();
-        });
-        return { root: root, body: body };
-      },
-      info: function (citeKey) {
-        var cite = JournalGamify.cite(citeKey);
-        var wrap = document.createElement("span");
-        var btn = document.createElement("button");
-        var tip = document.createElement("span");
-        var tipId = "tip-" + (++tipSeq);
-        wrap.className = "info-wrap";
-        btn.type = "button";
-        btn.className = "info-btn";
-        btn.textContent = "About";
-        btn.setAttribute("aria-label", (cite.title || "About") + ". " + (cite.concept || citeKey));
-        btn.setAttribute("aria-expanded", "false");
-        tip.className = "info-tip";
-        tip.id = tipId;
-        tip.hidden = true;
-        tip.setAttribute("role", "note");
-        tip.textContent = [cite.title, cite.by, cite.concept, cite.text].filter(Boolean).join(". ");
-        btn.addEventListener("click", function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          var opening = tip.hidden;
-          Array.prototype.forEach.call(document.querySelectorAll(".info-tip"), function (el) { el.hidden = true; });
-          Array.prototype.forEach.call(document.querySelectorAll(".info-btn"), function (el) { el.setAttribute("aria-expanded", "false"); });
-          if (!opening) return;
-          tip.hidden = false;
-          btn.setAttribute("aria-expanded", "true");
-          btn.setAttribute("aria-describedby", tipId);
-        });
-        wrap.appendChild(btn);
-        wrap.appendChild(tip);
-        return wrap;
-      },
-      todoList: function () {},
-      announce: function (text) {
-        var live = document.getElementById("live");
-        if (live) live.textContent = text;
-      }
-    };
-    document.addEventListener("keydown", function (event) {
-      if (event.key !== "Escape") return;
-      Array.prototype.forEach.call(document.querySelectorAll(".info-tip"), function (el) { el.hidden = true; });
-      Array.prototype.forEach.call(document.querySelectorAll(".info-btn"), function (el) { el.setAttribute("aria-expanded", "false"); });
-    });
+  </script>
+  <script src="/journal/next/js/data.js"></script>
+  <script src="/journal/next/js/ops.js"></script>
+  <script src="/journal/next/js/ui.js"></script>
+  <script>
+    JournalData.load(JSON.parse(window.__seal));
     window.__bootHabits = function () {
       var hash = location.hash.replace(/^#/, "");
       var key = "";
@@ -401,7 +287,7 @@ async function axe(page, where) {
 
 async function openAll(page) {
   await page.evaluate(function () {
-    Array.prototype.forEach.call(document.querySelectorAll("#view details"), function (el) { el.open = true; });
+    Array.prototype.forEach.call(document.querySelectorAll("#view .fold"), function (el) { el.open = true; });
   });
 }
 
@@ -432,37 +318,37 @@ async function main() {
     assert.deepEqual(errors, []);
     await page.locator("[data-fold='habit-today']").waitFor();
 
-    const closed = await page.$$eval("#view details", function (nodes) { return nodes.map(function (el) { return el.open; }); });
+    const closed = await page.$$eval("#view .fold", function (nodes) { return nodes.map(function (el) { return el.open; }); });
     assert.ok(closed.length === 6 && closed.every(function (open) { return open === false; }), "folds start closed");
-    const todayText = await page.locator("[data-fold='habit-today'] summary").innerText();
+    const todayText = await page.locator("[data-fold='habit-today'] .fold-summary").innerText();
     assert.match(todayText, /Today/);
     assert.match(todayText, /Today · 4 of 7 done · win day/);
-    assert.match(await page.locator("[data-fold='habit-effort'] summary").innerText(), /^Effort[\s\S]*Effort · level \d+ · \d+ XP$/);
-    assert.match(await page.locator("[data-fold='habit-streaks'] summary").innerText(), /Streaks · 4 on a streak/);
-    assert.match(await page.locator("[data-fold='habit-year'] summary").innerText(), /Year in days · 17 days logged/);
-    assert.match(await page.locator("[data-fold='habit-weeks'] summary").innerText(), /Week by week · \d+% done/);
-    assert.match(await page.locator("[data-fold='habit-months'] summary").innerText(), /Month by month · \d+% done/);
+    assert.match(await page.locator("[data-fold='habit-effort'] .fold-summary").innerText(), /^Effort · level \d+ · \d+ XP$/);
+    assert.match(await page.locator("[data-fold='habit-streaks'] .fold-summary").innerText(), /Streaks · 4 on a streak/);
+    assert.match(await page.locator("[data-fold='habit-year'] .fold-summary").innerText(), /Year in days · 17 days logged/);
+    assert.match(await page.locator("[data-fold='habit-weeks'] .fold-summary").innerText(), /Week by week · \d+% done/);
+    assert.match(await page.locator("[data-fold='habit-months'] .fold-summary").innerText(), /Month by month · \d+% done/);
     const pictograph = /\p{Extended_Pictographic}/u;
-    const summaries = await page.$$eval("#view summary", function (nodes) { return nodes.map(function (el) { return el.innerText; }); });
+    const summaries = await page.$$eval("#view .fold-summary", function (nodes) { return nodes.map(function (el) { return el.innerText; }); });
     summaries.forEach(function (text) { assert.equal(pictograph.test(text), false, text); });
     assertNoXScroll(await scrollWidth(page), "closed");
     await axe(page, "axe closed");
 
-    const summariesLoc = page.locator("#view summary");
+    const summariesLoc = page.locator("#view .fold-summary");
     const summaryCount = await summariesLoc.count();
     let s;
     for (s = 0; s < summaryCount; s++) {
       const summary = summariesLoc.nth(s);
       await summary.focus();
-      const before = await summary.evaluate(function (el) { return el.parentElement.open; });
+      const before = await summary.evaluate(function (el) { return el.closest(".fold").open; });
       await page.keyboard.press("Enter");
-      assert.equal(await summary.evaluate(function (el) { return el.parentElement.open; }), !before, "Enter toggles summary " + s);
+      assert.equal(await summary.evaluate(function (el) { return el.closest(".fold").open; }), !before, "Enter toggles summary " + s);
       await page.keyboard.press("Enter");
-      assert.equal(await summary.evaluate(function (el) { return el.parentElement.open; }), before, "Enter toggles back " + s);
+      assert.equal(await summary.evaluate(function (el) { return el.closest(".fold").open; }), before, "Enter toggles back " + s);
       await page.keyboard.press("Space");
-      assert.equal(await summary.evaluate(function (el) { return el.parentElement.open; }), !before, "Space toggles summary " + s);
+      assert.equal(await summary.evaluate(function (el) { return el.closest(".fold").open; }), !before, "Space toggles summary " + s);
       await page.keyboard.press("Space");
-      assert.equal(await summary.evaluate(function (el) { return el.parentElement.open; }), before, "Space toggles back " + s);
+      assert.equal(await summary.evaluate(function (el) { return el.closest(".fold").open; }), before, "Space toggles back " + s);
     }
 
     await openAll(page);
@@ -530,10 +416,12 @@ async function main() {
     await page.keyboard.press("ArrowLeft");
     const movedLabel = await page.evaluate(function () { return document.activeElement.getAttribute("aria-label"); });
     assert.notEqual(movedLabel, currentLabel);
-    assert.equal(await page.locator("#live").innerText(), movedLabel);
+    await page.waitForTimeout(80);
+    assert.ok(movedLabel.indexOf(await page.locator("#announce").innerText()) !== -1, "announcement is part of " + movedLabel);
     assert.equal(await page.locator("[data-span='week'] .trend-stop[tabindex='0']").count(), 1);
     await page.keyboard.press("Enter");
-    assert.equal(await page.locator("#live").innerText(), movedLabel);
+    await page.waitForTimeout(80);
+    assert.ok(movedLabel.indexOf(await page.locator("#announce").innerText()) !== -1, "announcement is part of " + movedLabel);
     await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(function () { return document.activeElement.classList.contains("trend-stop"); }), false);
 
@@ -560,7 +448,7 @@ async function main() {
     await page.goto(origin + "/harness.html#habits/training", { waitUntil: "networkidle" });
     await openAll(page);
     assert.equal(await page.locator("[data-select='training']").first().getAttribute("aria-pressed"), "true");
-    assert.match(await page.locator("[data-fold='habit-year'] summary").innerText(), /Training/);
+    assert.match(await page.locator("[data-fold='habit-year'] .fold-summary").innerText(), /Training/);
     const miss = page.locator("button.hcell.miss").first();
     const unknown = page.locator("button.hcell.unknown").first();
     assert.equal(await miss.getAttribute("data-status"), "miss");
@@ -576,7 +464,7 @@ async function main() {
       document.querySelectorAll("a[href*='health']").forEach(function (link) {
         link.addEventListener("click", function (event) { event.preventDefault(); });
       });
-      Array.prototype.forEach.call(document.querySelectorAll("#view summary, #view button, #view a[href]"), function (el) {
+      Array.prototype.forEach.call(document.querySelectorAll("#view .fold-summary, #view button, #view a[href]"), function (el) {
         el.click();
       });
     });
@@ -594,11 +482,11 @@ async function main() {
     assert.equal(await page.locator("[data-fold='habit-today']").evaluate(function (el) { return el.open; }), true);
     assert.equal(await page.locator("[data-habit='sunlight'] button").getAttribute("aria-pressed"), "true");
     assert.equal(await page.locator("[data-habit='sunlight'] a").getAttribute("href"), "https://dong-xuyong.github.io/health/");
-    const othersClosed = await page.$$eval("#view details:not([data-fold='habit-today'])", function (nodes) {
+    const othersClosed = await page.$$eval("#view .fold:not([data-fold='habit-today'])", function (nodes) {
       return nodes.every(function (el) { return !el.open; });
     });
     assert.equal(othersClosed, true);
-    await page.locator("[data-fold='habit-streaks'] summary").click();
+    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
     await page.waitForTimeout(20);
     const parsed = await page.evaluate(function () { return JSON.parse(localStorage.getItem("journal-folds") || "{}"); });
     assert.equal(parsed["habit-streaks"], true);

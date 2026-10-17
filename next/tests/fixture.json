@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "meta": { "note": "unknown top-level key must survive" },
+  "habitDefs": [
+    { "id": "thesis", "label": "Thesis", "emoji": "📝" },
+    { "id": "training", "label": "Training", "emoji": "💪" },
+    { "id": "food_logged", "label": "Food logged", "emoji": "🍽️" },
+    { "id": "weigh_in", "label": "Weigh in", "emoji": "⚖️" },
+    { "id": "speaking", "label": "Speaking", "emoji": "🗣️" },
+    { "id": "sunlight", "label": "Sunlight", "emoji": "☀️" },
+    { "id": "protein_breakfast", "label": "Protein breakfast", "emoji": "🥚" }
+  ],
+  "quotes": {
+    "2026-10-17": { "text": "The obstacle is the way. — Marcus Aurelius", "updatedAt": "2026-10-17T06:00:00.000Z" }
+  },
+  "days": {
+    "2026-10-14": { "sleep": 7.2, "mood": 4, "energy": 3 },
+    "2026-10-15": { "sleep": 6.5, "moodMeter": 2 }
+  },
+  "sleep": { "2026-10-16": { "bed": "23:30", "wake": "07:00" } },
+  "reflections": {
+    "questions": [
+      { "id": "q1", "text": "If I knew I couldn't fail, what would I like to do?" },
+      { "id": "q2", "text": "Even if I knew I would fail, what would I like to do anyway?" },
+      { "id": "q3", "text": "If I had all the time and money in the world, but I had to use 40 hours a week to be of service to other people, what would I do?" },
+      { "id": "q4", "text": "If I was giving a TED talk 40 years from now and the audience is giving it a standing ovation, what would I like to have talked about?" },
+      { "id": "q5", "text": "What do I want people to say about me at my funeral?" },
+      { "id": "q6", "text": "What do I want written about myself in my obituary?" },
+      { "id": "q7", "text": "If I continued on this exact path, where would I end up five years from now? And is that where I want to end up?" },
+      { "id": "q8", "text": "If I took a completely different path to what I'm doing right now, where might I end up five years from now?" },
+      { "id": "q9", "text": "If I took a completely different path and did not care about money or what other people thought of me, where might I end up?" }
+    ],
+    "answers": {
+      "q1": [{ "date": "2026-10-13", "text": "Write a book on Portuguese law for engineers." }],
+      "q5": [{ "date": "2026-10-16", "text": "That he was kind and kept his word." }]
+    }
+  },
+  "entries": {
+    "2026-10-16": {
+      "updatedAt": "2026-10-16T21:00:00.000Z",
+      "fields": { "mood": 3, "energy": 2, "focus": "Chapter 3", "wins": ["Wrote 800 words"], "lesson": "Start before checking mail." },
+      "todos": [
+        { "id": "y1", "text": "Email supervisor", "done": false },
+        { "id": "y2", "text": "Gym", "done": true }
+      ],
+      "habits": { "thesis": true, "training": true, "sunlight": null, "speaking": false },
+      "habitStreaks": { "thesis": 3, "training": 1 }
+    },
+    "2026-10-17": {
+      "updatedAt": "2026-10-17T08:00:00.000Z",
+      "fields": {
+        "mood": 4,
+        "energy": 4,
+        "focus": "Ship",
+        "priorities": ["Finish chapter 3 draft", "Call the bank", "Run 5k"],
+        "failureCost": "The draft slips another week.",
+        "ifThen": "If I open Slack, then I close it and write one paragraph.",
+        "grateful": ["Coffee", "Sun", "Mum"],
+        "makeGreat": "Deep work before noon.",
+        "affirmation": "I finish what I start.",
+        "feeling": "Calm",
+        "wins": ["Wrote before email", "Ran in the rain"],
+        "highlights": "Lunch with Ana.",
+        "lesson": "Small starts beat big plans.",
+        "better": "Sleep earlier.",
+        "chosenVsMomentum": "Chose the run; autopilot on the phone at night.",
+        "tomorrow": ["Edit chapter 3", "Weigh in"],
+        "top3": ["Morning brief item"],
+        "top3UpdatedAt": "2026-10-17T06:00:00.000Z",
+        "sleep": 7.5,
+        "caffeine": 2,
+        "sunlight": true
+      },
+      "todos": [
+        { "id": "t1", "text": "Finish chapter 3 draft", "done": false, "mit": true },
+        { "id": "t2", "text": "Call the bank", "done": true }
+      ],
+      "habits": { "thesis": true, "training": false, "food_logged": true, "weigh_in": null, "speaking": true, "sunlight": true, "protein_breakfast": true },
+      "habitStreaks": { "thesis": 4, "training": 0 }
+    },
+    "2026-W42": {
+      "updatedAt": "2026-10-12T09:00:00.000Z",
+      "fields": {
+        "enjoyment": "green",
+        "why": "Momentum on the thesis.",
+        "oneThing": "Chapter 3 draft",
+        "wins": "Three writing days.",
+        "accomplishments": "Outline done.",
+        "improve": "Evenings.",
+        "rootCause": "Phone in bed.",
+        "grateful": ["Ana", "Health", "Time"],
+        "lesson": "Protect mornings.",
+        "watch": "Travel on Friday.",
+        "goals": {
+          "thesis": { "progress": "Draft 60%", "score": 3, "next": "Finish section 3.2" },
+          "health": { "progress": "3 runs", "score": 4, "next": "Long run Sunday" }
+        },
+        "difficulty": "About right.",
+        "audit": "Chose writing over news."
+      },
+      "todos": [{ "id": "w1", "text": "Submit outline", "done": true }]
+    },
+    "2026-10": {
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "fields": { "oneThing": "Finish chapter 3", "wins": "Steady writing.", "goalsReview": "Yes, thesis moved." },
+      "todos": [{ "id": "m1", "text": "Book dentist", "done": false }]
+    },
+    "2026-Q4": {
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "fields": { "mainQuest": "Submit thesis", "q1": "Thesis submitted", "commit90": "A full draft." },
+      "todos": []
+    },
+    "2026": {
+      "updatedAt": "2026-01-01T09:00:00.000Z",
+      "fields": { "vision": "Calm, fit, finished thesis.", "principle": "Start small." },
+      "todos": [{ "id": "g1", "text": "Submit thesis", "done": false, "status": "progress" }]
+    }
+  }
+}
