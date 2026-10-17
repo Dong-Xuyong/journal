@@ -266,19 +266,24 @@ async function frame(page) {
     });
     var period = document.querySelector(".period");
     var buttons = Array.prototype.map.call(period.querySelectorAll("button"), rect);
+    var heading = rect(document.getElementById("period-heading"));
     return {
       tabs: rect(document.getElementById("tabs")),
       links: links,
       crumbs: crumbs,
       period: rect(period),
+      heading: heading,
       buttons: buttons,
+      tabDecoration: getComputedStyle(document.querySelector("#tabs a")).textDecorationLine,
+      crumbDecoration: getComputedStyle(document.querySelector("#crumbs a")).textDecorationLine,
       sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
       own: document.querySelector(".todo textarea") ? document.querySelector(".todo textarea").getAttribute("data-own") : ""
     };
   });
-  check("own", "six tabs on one row at most 44px", box.tabs.height <= 44 && box.links.length === 6 && box.links.every(function (link) { return Math.abs(link.top - box.links[0].top) < 1 && link.right <= 360 && link.height >= 32; }), JSON.stringify({ h: box.tabs.height, links: box.links.map(function (link) { return link.text + " " + Math.round(link.height); }) }));
-  check("own", "breadcrumb is one short line", box.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>17" && box.crumbs.every(function (link) { return Math.abs(link.top - box.crumbs[0].top) < 1 && link.label.indexOf(link.text) !== -1; }), box.crumbs.map(function (link) { return link.text + "=" + link.label; }).join(" | "));
-  check("own", "heading and period buttons are about 80px", box.period.height <= 88 && box.buttons.length === 3 && box.buttons.every(function (button) { return button.height >= 31 && button.height <= 36 && Math.abs(button.top - box.buttons[0].top) < 1; }), JSON.stringify({ h: box.period.height, buttons: box.buttons }));
+  const sameRow = Math.abs((box.heading.top + box.heading.top + box.heading.height) / 2 - (box.buttons[0].top + box.buttons[0].top + box.buttons[0].height) / 2) < 4;
+  check("own", "six tabs are one slim pill row", box.tabs.height <= 40 && box.tabs.right <= 360 && box.tabDecoration === "none" && box.links.length === 6 && box.links.every(function (link) { return Math.abs(link.top - box.links[0].top) < 1 && link.height >= 32 && link.height <= 40; }), JSON.stringify({ h: box.tabs.height, decoration: box.tabDecoration, links: box.links.map(function (link) { return link.text + " " + Math.round(link.height); }) }));
+  check("own", "breadcrumb is one short line", box.crumbs.map(function (link) { return link.text; }).join(">") === "2026>Q4>Oct>W42>Sat 17" && box.crumbDecoration === "none" && box.crumbs.every(function (link) { return Math.abs(link.top - box.crumbs[0].top) < 1 && link.label.indexOf(link.text) !== -1 && link.right <= 360; }), box.crumbs.map(function (link) { return link.text + "=" + link.label; }).join(" | "));
+  check("own", "date and period buttons share one row", box.period.height <= 56 && sameRow && box.buttons.length === 3 && box.buttons.every(function (button) { return button.height >= 31 && button.height <= 36 && Math.abs(button.top - box.buttons[0].top) < 1; }), JSON.stringify({ h: box.period.height, sameRow: sameRow, buttons: box.buttons }));
   check("own", "day frame does not scroll sideways", box.sw <= 360, String(box.sw));
   check("own", "to-do text is marked as Dong's own", box.own === "todo", String(box.own));
 
@@ -286,6 +291,30 @@ async function frame(page) {
   check("own", "axe AA light, folds closed", !closed.length, closed.join("; "));
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: SHOTS + "/journal-360-light-closed.png", fullPage: true });
+  await page.setViewportSize({ width: 320, height: 740 });
+  const narrow = await page.evaluate(function () {
+    function rect(el) {
+      var r = el.getBoundingClientRect();
+      return { top: r.top, right: r.right, height: r.height };
+    }
+    var links = Array.prototype.map.call(document.querySelectorAll("#tabs a"), rect);
+    var crumbs = Array.prototype.map.call(document.querySelectorAll("#crumbs a"), rect);
+    var buttons = Array.prototype.map.call(document.querySelectorAll(".period button"), rect);
+    var heading = rect(document.getElementById("period-heading"));
+    return {
+      tabs: rect(document.getElementById("tabs")),
+      links: links,
+      crumbs: crumbs,
+      period: rect(document.querySelector(".period")),
+      heading: heading,
+      buttons: buttons,
+      sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
+    };
+  });
+  const narrowRow = Math.abs((narrow.heading.top + narrow.heading.height / 2) - (narrow.buttons[0].top + narrow.buttons[0].height / 2)) < 4;
+  check("own", "320px frame stays one scrolling row", narrow.sw <= 320 && narrow.tabs.height <= 40 && narrow.tabs.right <= 320 && narrow.links.every(function (link) { return Math.abs(link.top - narrow.links[0].top) < 1; }) && narrow.crumbs.every(function (link) { return Math.abs(link.top - narrow.crumbs[0].top) < 1 && link.right <= 320; }) && narrow.period.height <= 56 && narrowRow, JSON.stringify({ sw: narrow.sw, tabs: narrow.tabs, period: narrow.period.height, crumbRights: narrow.crumbs.map(function (link) { return Math.round(link.right); }) }));
+  await page.screenshot({ path: SHOTS + "/journal-320-light-closed.png", fullPage: true });
+  await page.setViewportSize({ width: 360, height: 740 });
   await page.locator('[data-fold="day:quote"] .fold-summary').click();
   await page.screenshot({ path: SHOTS + "/journal-360-light-quote-open.png", fullPage: true });
   await page.evaluate(function () {
