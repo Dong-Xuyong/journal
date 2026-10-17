@@ -1,6 +1,6 @@
-# Journal — reading and saving
+# Journal next — reading and saving
 
-Builder 1 notes for `js/data.js` and `js/ops.js`. The file shape in `CONTRACT.md` does not change. These modules do not add, rename, or delete stored keys except through the operations below.
+Builder 1 notes for `next/js/data.js` and `next/js/ops.js`. The file shape in `CONTRACT.md` does not change. These modules do not add, rename, or delete stored keys except through the operations below.
 
 ## What stays read-only
 
@@ -10,8 +10,6 @@ The Habits tab shows plain tracking only (no XP, levels or surprise rolls; Dong,
 
 ## localStorage
 
-The `journal-next-*` names come from the preview at `/journal/next/` and are kept after the move to the root, so edits queued there are not lost.
-
 | Key | Use |
 |---|---|
 | `journal-next-ops` | Queue of edits that have not been saved yet. Survives a reload. |
@@ -19,7 +17,7 @@ The `journal-next-*` names come from the preview at `/journal/next/` and are kep
 | `journal-next-backup` | Exact text of the first remote file this browser loads. Never replaced. |
 | `dong-gh-sync` | Existing token store. Read for the GitHub token and repo. Not rewritten here. |
 
-`journal-v1` was the old app's cache. These modules never read it and never write it, so anything left in it stays on the device.
+`journal-v1` is the current app's cache. These modules never read it and never write it.
 
 ## Reading (`JournalData`)
 
@@ -68,6 +66,6 @@ The PUT body is the file from the GET in that same cycle, plus the queued edits.
 
 ## Tools
 
-`tools/backup-journal.mjs` copies `journal.json` to `backups/journal-<ISO>.json` in `Dong-Xuyong/progress-sync`. It refuses to overwrite an existing backup and checks the SHA-256 of the copy against the original. Pass `GITHUB_TOKEN` or `DONG_GH_TOKEN`. `--local <src> <destDir>` does the same check on disk.
+`next/tools/backup-journal.mjs` copies `journal.json` to `backups/journal-<ISO>.json` in `Dong-Xuyong/progress-sync`. It refuses to overwrite an existing backup and checks the SHA-256 of the copy against the original. Pass `GITHUB_TOKEN` or `DONG_GH_TOKEN`. `--local <src> <destDir>` does the same check on disk.
 
-`tools/verify-roundtrip.mjs <journal.json>` ticks, adds, edits, and removes to-dos and appends two reflection answers (the first text twice). It prints `nothing lost` when every original path is still present and the only changes are those to-dos, the new answers, and `updatedAt` on the touched entry.
+`next/tools/verify-roundtrip.mjs <journal.json>` ticks, adds, edits, and removes to-dos and appends two reflection answers (the first text twice). It prints `nothing lost` when every original path is still present and the only changes are those to-dos, the new answers, and `updatedAt` on the touched entry.

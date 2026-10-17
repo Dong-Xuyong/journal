@@ -12,9 +12,9 @@ import { lostReport, scriptSession } from "../tools/verify-roundtrip.mjs";
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "..");
-const dataPath = path.join(root, "js/data.js");
-const opsPath = path.join(root, "js/ops.js");
+const root = path.resolve(here, "../..");
+const dataPath = path.join(root, "next/js/data.js");
+const opsPath = path.join(root, "next/js/ops.js");
 const data = require(dataPath);
 const opsPure = require(opsPath);
 const { chromium } = require("/tmp/jt/node_modules/playwright");
@@ -378,7 +378,7 @@ function testRoundTripTool() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "journal-rt-"));
   const file = path.join(dir, "journal.json");
   fs.writeFileSync(file, JSON.stringify(fixture, null, 2));
-  const ran = spawnSync(process.execPath, [path.join(root, "tools/verify-roundtrip.mjs"), file], { encoding: "utf8" });
+  const ran = spawnSync(process.execPath, [path.join(root, "next/tools/verify-roundtrip.mjs"), file], { encoding: "utf8" });
   assert.equal(ran.status, 0, ran.stderr || ran.stdout);
   assert.equal(ran.stdout.trim(), "nothing lost");
   assert.equal(fs.readFileSync(file, "utf8"), JSON.stringify(fixture, null, 2));
@@ -390,7 +390,7 @@ function testBackupTool() {
   const dest = path.join(dir, "backups");
   const text = "{\n  \"version\": 1,\n  \"mystery\": \"café 📝\"\n}\n";
   fs.writeFileSync(src, text);
-  const tool = path.join(root, "tools/backup-journal.mjs");
+  const tool = path.join(root, "next/tools/backup-journal.mjs");
   const first = spawnSync(process.execPath, [tool, "--local", src, dest], { encoding: "utf8" });
   assert.equal(first.status, 0, first.stderr);
   assert.match(first.stdout, /sha256 match/);
@@ -624,8 +624,8 @@ async function testViewport() {
     "<script>localStorage.setItem('dong-gh-sync', JSON.stringify({token:'test-token',repo:'Dong-Xuyong/progress-sync'}));" +
     "localStorage.setItem('journal-v1','sentinel');" +
     "localStorage.setItem('journal-next-cache'," + JSON.stringify(JSON.stringify(stale)) + ");</script>" +
-    "<script src=\"/journal/js/data.js\"></script>" +
-    "<script src=\"/journal/js/ops.js\"></script>" +
+    "<script src=\"/journal/next/js/data.js\"></script>" +
+    "<script src=\"/journal/next/js/ops.js\"></script>" +
     "<script>document.getElementById('tick').addEventListener('change', function () {" +
     "JournalOps.todoPatch('2026-10-17','t1',{done:document.getElementById('tick').checked});});</script>" +
     "</body></html>";

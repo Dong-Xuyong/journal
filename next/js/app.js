@@ -103,8 +103,8 @@
   function habitLabel(id) {
     var defs = Data.habitDefs();
     var i;
-    for (i = 0; i < defs.length; i++) if (defs[i].id === id) return defs[i].label || id;
-    return "";
+    for (i = 0; i < defs.length; i++) if (defs[i].id === id) return defs[i].label;
+    return id;
   }
 
   function paintCrumbs() {
@@ -112,8 +112,8 @@
     var chain;
     crumbs.textContent = "";
     if (route.kind === "habits") {
-      chain = [{ href: "#habits", text: "Habits", current: !habitLabel(route.key) }];
-      if (habitLabel(route.key)) chain.push({ href: "#habits/" + encodeURIComponent(route.key), text: habitLabel(route.key), current: true });
+      chain = [{ href: "#habits", text: "Habits", current: !route.key }];
+      if (route.key) chain.push({ href: "#habits/" + encodeURIComponent(route.key), text: habitLabel(route.key), current: true });
     } else {
       chain = Data.ancestors(route.key).slice().reverse().concat([route.key]).map(function (key, index, all) {
         var kind = Data.kindOf(key);
@@ -190,7 +190,7 @@
     paintTabs();
     paintCrumbs();
     paintNav();
-    if (route.kind === "habits") title = habitLabel(route.key) ? "Habits \u00b7 " + habitLabel(route.key) : "Habits";
+    if (route.kind === "habits") title = route.key ? "Habits \u00b7 " + habitLabel(route.key) : "Habits";
     else title = Data.label(route.key) || KIND_WORD[route.kind];
     heading.textContent = title;
     document.title = title + " \u00b7 Journal";

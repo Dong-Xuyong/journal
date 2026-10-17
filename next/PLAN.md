@@ -1,5 +1,3 @@
-> Historical plan. Since the cutover, everything that was under `next/` lives at the repo root (`js/`, `css/`, `tests/`, `tools/`), and `/journal/next/` redirects to `/journal/`.
-
 Rebuilding is the better design, but only for the app itself. The data file should keep its current shape, so no migration is needed. It's still a plan only: no code changes, branches or PR.
 
 ## Decision
