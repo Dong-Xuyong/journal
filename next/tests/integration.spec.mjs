@@ -167,6 +167,19 @@ async function dayCopy(browser) {
   ["If-then plan", "Daily affirmation", "Chosen or autopilot", "If the first priority is skipped"].forEach(function (label) {
     check("old label gone: " + label, text.indexOf(label) === -1);
   });
+  await page.locator('[data-field="failureCost"] .info-btn').click();
+  const tip = await page.evaluate(function () {
+    const field = document.querySelector('[data-field="failureCost"]');
+    return {
+      label: field.querySelector(".day-label").getBoundingClientRect().width,
+      tip: field.querySelector(".info-tip").getBoundingClientRect().width,
+      sw: document.documentElement.scrollWidth
+    };
+  });
+  check("open tip sits under the label at full width", tip.label > 150 && tip.tip > 250 && tip.sw <= 360, JSON.stringify(tip));
+  const tipAxe = await axeBad(page);
+  check("axe AA with a tip open", !tipAxe.length, tipAxe.join("; "));
+  await page.keyboard.press("Escape");
   const f = FIXTURE.entries[DAY].fields;
   [f.failureCost, f.ifThen, f.lesson, f.better, f.chosenVsMomentum, f.highlights].forEach(function (answer) {
     check("answer shown exactly once: " + answer.slice(0, 24), text.split(answer).length === 2);
