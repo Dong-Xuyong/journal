@@ -52,21 +52,11 @@
   }
 
   function addMarker(svg, x, y, prop) {
-    var mark;
-    if (prop === "energy") {
-      mark = svgEl("rect");
-      mark.setAttribute("x", String(x - 4));
-      mark.setAttribute("y", String(y - 4));
-      mark.setAttribute("width", "8");
-      mark.setAttribute("height", "8");
-      mark.setAttribute("class", "trend-energy");
-    } else {
-      mark = svgEl("circle");
-      mark.setAttribute("cx", String(x));
-      mark.setAttribute("cy", String(y));
-      mark.setAttribute("r", "4");
-      mark.setAttribute("class", "trend-mood");
-    }
+    var mark = svgEl("circle");
+    mark.setAttribute("cx", String(x));
+    mark.setAttribute("cy", String(y));
+    mark.setAttribute("r", "3");
+    mark.setAttribute("class", prop === "energy" ? "trend-energy" : "trend-mood");
     svg.appendChild(mark);
   }
 
@@ -151,7 +141,8 @@
         id: foldId || "period-data",
         title: "Data table",
         level: 4,
-        summary: "Data table"
+        summary: "Data table",
+        emoji: "📋"
       });
     }
     if (!made) {

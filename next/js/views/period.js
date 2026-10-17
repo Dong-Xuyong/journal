@@ -2,6 +2,18 @@
   "use strict";
 
   var ENJOY = { green: "Good", yellow: "Mixed", red: "Rough" };
+  var FACES = { 1: "😞", 2: "😕", 3: "😐", 4: "🙂", 5: "😄" };
+  var FOLD_EMOJI = {
+    glance: "📈",
+    children: "🗓️",
+    plan: "🧭",
+    review: "🔍",
+    goals: "🎯",
+    choices: "🔀",
+    habits: "🔁",
+    last: "↩️",
+    todos: "✅"
+  };
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var GOAL_ORDER = [
     { id: "thesis", label: "Thesis", href: "https://dong-xuyong.github.io/thesis/" },
@@ -86,12 +98,31 @@
     return date.getFullYear() + "-" + pad2(date.getMonth() + 1) + "-" + pad2(date.getDate());
   }
 
+  function periodDays(key, through) {
+    var days = JournalData.daysIn(key, through);
+    return Array.isArray(days) ? days.length : 0;
+  }
+
   function rollupOf(key, through) {
     var roll = JournalData.rollup(key, { through: through });
     if (!roll || typeof roll !== "object") {
-      return { days: 0, logged: 0, mood: null, energy: null, sleep: null, todos: { done: 0, total: 0 }, habitRate: null, reflections: 0 };
+      return { days: periodDays(key, through), logged: 0, mood: null, energy: null, sleep: null, todos: { done: 0, total: 0 }, habitRate: null, reflections: 0 };
     }
     return roll;
+  }
+
+  function show(text) {
+    return JournalUI.plain(String(text == null ? "" : text));
+  }
+
+  function nearestDot(stat) {
+    var avg = statAvg(stat);
+    var dot;
+    if (avg == null) return null;
+    dot = Math.round(avg);
+    if (dot < 1) return 1;
+    if (dot > 5) return 5;
+    return dot;
   }
 
   function statAvg(stat) {
@@ -202,35 +233,28 @@
     return JournalData.label(key) || key;
   }
 
-  function childSentence(key, roll) {
-    var mood = fmtScore(roll.mood);
-    var energy = fmtScore(roll.energy);
-    return childTitle(key) + ", " +
-      (mood == null ? "mood not logged" : "mood " + mood) + ", " +
-      (energy == null ? "energy not logged" : "energy " + energy) + ", " +
-      countText(roll.logged) + " of " + countText(roll.days) + " days logged";
-  }
-
   function linesOf(spec, value) {
     var out = [];
     var i;
     var word;
+    var text;
     if (spec.type === "enjoy") {
       word = ENJOY[value];
-      if (word) return [word];
+      if (word) return [show(word)];
       if (value == null || String(value).trim() === "") return [];
-      return [String(value).trim()];
+      text = show(String(value).trim());
+      return text ? [text] : [];
     }
     if (Array.isArray(value)) {
       for (i = 0; i < value.length; i++) {
         var item = value[i];
-        var text = item && typeof item === "object" ? (item.text || item.title || item.label || item.name || "") : item;
-        text = String(text == null ? "" : text).trim();
+        text = item && typeof item === "object" ? (item.text || item.title || item.label || item.name || "") : item;
+        text = show(String(text == null ? "" : text).trim());
         if (text) out.push(text);
       }
       return out;
     }
-    text = String(value == null ? "" : value).trim();
+    text = show(String(value == null ? "" : value).trim());
     return text ? [text] : [];
   }
 
@@ -276,6 +300,11 @@
     if (!lines.length) return false;
     block = el("div", "period-field");
     block.setAttribute("data-field", spec.key);
+    if (spec.type === "enjoy") {
+      block.appendChild(JournalUI.chip({ label: spec.label, text: lines[0] }));
+      parent.appendChild(block);
+      return true;
+    }
     head = el("div", "period-field-head");
     head.appendChild(el("h4", null, spec.label));
     if (spec.cite) appendInfo(head, spec.cite);
@@ -318,7 +347,8 @@
       id: foldId(kind, name),
       title: title,
       level: 3,
-      summary: sectionSummary(title, specs, fields)
+      summary: sectionSummary(title, specs, fields),
+      emoji: FOLD_EMOJI[name] || FOLD_EMOJI.plan
     });
     renderSpecs(fold.body, specs, fields);
   }
@@ -380,8 +410,20 @@
 
   function choicesSummary(fields) {
     var text = String(fields.difficulty == null ? "" : fields.difficulty).trim() || String(fields.audit == null ? "" : fields.audit).trim();
-    if (text) return JournalUI.oneLine(["Difficulty and choices", JournalUI.clip(text, 40)]);
+    if (text) return JournalUI.oneLine(["Difficulty and choices", JournalUI.clip(show(text), 40)]);
     return "Difficulty and choices \u00b7 nothing yet";
+  }
+
+  function metricChip(label, stat, emoji) {
+    var avg = statAvg(stat);
+    var dot = nearestDot(stat);
+    var exact = avg == null ? "" : (Math.round(avg * 10) / 10).toFixed(1);
+    var opts = { label: label, value: dot, max: 5 };
+    var row = el("div", "glance-metric");
+    if (emoji) opts.emoji = emoji;
+    row.appendChild(JournalUI.chip(opts));
+    if (exact) row.appendChild(el("span", "glance-exact", exact));
+    return row;
   }
 
   function renderGlance(view, kind, roll, prev, kids) {
@@ -389,14 +431,30 @@
       id: kind + ":mood",
       title: "At a glance",
       level: 3,
-      summary: glanceSummary(roll, prev)
+      summary: glanceSummary(roll, prev),
+      emoji: FOLD_EMOJI.glance
     });
-    var mood = fmtScore(roll.mood);
-    var energy = fmtScore(roll.energy);
+    var moodDot = nearestDot(roll.mood);
+    var metrics = el("div", "glance-metrics");
+    var checks = el("div", "glance-checks");
+    var checkLabel = el("span", "glance-checks-label", "Check-ins");
+    var logged = countText(roll.logged);
+    var days = countText(roll.days);
     var points = [];
     var i;
-    if (!mood && !energy) fold.body.appendChild(el("p", "period-prose", "No check-ins yet"));
-    fold.body.appendChild(el("p", "period-prose", countText(roll.logged) + " of " + countText(roll.days) + " days logged."));
+    metrics.appendChild(metricChip("Mood", roll.mood, moodDot == null ? "" : FACES[moodDot]));
+    metrics.appendChild(metricChip("Energy", roll.energy, statAvg(roll.energy) == null ? "" : "⚡"));
+    fold.body.appendChild(metrics);
+    // One dot per day only fits a week at 360px; longer spans get a count.
+    if (days <= 7) {
+      checkLabel.setAttribute("aria-hidden", "true");
+      checks.appendChild(checkLabel);
+      checks.appendChild(JournalUI.dots(logged, days, "Check-ins"));
+    } else {
+      checks.appendChild(JournalUI.chip({ label: "Check-ins", text: logged + " of " + days + " days" }));
+    }
+    fold.body.appendChild(checks);
+    if (!fmtScore(roll.mood) && !fmtScore(roll.energy)) fold.body.appendChild(el("p", "period-prose", "No check-ins yet"));
     for (i = 0; i < kids.length; i++) {
       points.push({
         key: kids[i].key,
@@ -414,18 +472,42 @@
     }
   }
 
+  function moodPhrase(roll) {
+    var avg = statAvg(roll && roll.mood);
+    var nearest;
+    if (avg == null) return "no check-in";
+    nearest = Math.round(avg);
+    if (Math.abs(avg - nearest) < 0.05) return "mood " + nearest;
+    return "mood " + (Math.round(avg * 10) / 10).toFixed(1);
+  }
+
   function renderChildren(view, kind, kids) {
     var fold = addFold(view, {
       id: kind + ":children",
       title: childHeading(kind),
       level: 3,
-      summary: childHeading(kind) + " \u00b7 " + loggedKids(kids) + " of " + kids.length + " with check-ins"
+      summary: childHeading(kind) + " \u00b7 " + loggedKids(kids) + " of " + kids.length + " with check-ins",
+      emoji: FOLD_EMOJI.children
     });
     var i;
     for (i = 0; i < kids.length; i++) {
-      var link = el("a", "period-child", childSentence(kids[i].key, kids[i].roll));
-      link.href = "#" + JournalData.kindOf(kids[i].key) + "/" + kids[i].key;
+      var avg = statAvg(kids[i].roll && kids[i].roll.mood);
+      var link = el("a", "period-child");
+      var dot = el("span", "jn-dot" + (avg == null ? "" : " on"));
+      var phrase = moodPhrase(kids[i].roll);
+      var kindName = JournalData.kindOf(kids[i].key);
+      var name = kindName === "day"
+        ? MONTHS[Number(kids[i].key.slice(5, 7)) - 1] + " " + Number(kids[i].key.slice(8, 10))
+        : childTitle(kids[i].key);
+      var full = JournalData.label(kids[i].key) || name;
+      link.href = "#" + kindName + "/" + kids[i].key;
       link.setAttribute("data-focus", "child:" + kids[i].key);
+      link.setAttribute("aria-label", name + " " + phrase + (full === name ? "" : ", " + full));
+      link.appendChild(el("span", "period-child-name", name));
+      dot.setAttribute("aria-hidden", "true");
+      link.appendChild(document.createTextNode(" "));
+      link.appendChild(dot);
+      link.appendChild(el("span", "period-child-mood", phrase));
       fold.body.appendChild(link);
     }
   }
@@ -436,7 +518,8 @@
       id: kind + ":goals",
       title: "Goals",
       level: 3,
-      summary: goalsSummary(goals)
+      summary: goalsSummary(goals),
+      emoji: FOLD_EMOJI.goals
     });
     var missing = [];
     var i;
@@ -447,14 +530,17 @@
       var next = goalBit(goal, "next");
       var score = scoreOf(goal);
       var block;
+      var row;
       if (!progress && !next && !score) missing.push(item.id);
       else {
-        block = el("div", "period-field");
+        block = el("div", "period-field period-goal");
+        row = el("div", "period-goal-row");
         block.setAttribute("data-field", "goals." + item.id);
-        block.appendChild(el("h4", null, item.label));
-        if (score) block.appendChild(el("p", "period-score", score + " of 5"));
-        if (progress) block.appendChild(el("p", "period-prose", progress));
-        if (next) block.appendChild(el("p", "period-prose", "Next: " + next));
+        row.appendChild(el("span", "period-goal-name", item.label));
+        row.appendChild(JournalUI.dots(score, 5, item.label + " score"));
+        if (next) row.appendChild(el("span", "period-goal-next", show(next)));
+        block.appendChild(row);
+        if (progress) block.appendChild(el("p", "period-prose", show(progress)));
         fold.body.appendChild(block);
       }
       if (item.href) {
@@ -471,7 +557,8 @@
       id: kind + ":choices",
       title: "Difficulty and choices",
       level: 3,
-      summary: choicesSummary(fields)
+      summary: choicesSummary(fields),
+      emoji: FOLD_EMOJI.choices
     });
     renderSpecs(fold.body, [
       { key: "difficulty", label: "Difficulty", short: "difficulty", missing: "difficulty", cite: "moderate" },
@@ -485,7 +572,8 @@
       id: kind + ":habits",
       title: "Habits",
       level: 3,
-      summary: "Habits \u00b7 " + phrase
+      summary: "Habits \u00b7 " + phrase,
+      emoji: FOLD_EMOJI.habits
     });
     var link = el("a", "period-habit", "Habits, " + countText(roll.logged) + " days with check-ins, " + phrase);
     link.href = "#habits";
@@ -504,7 +592,12 @@
     list = el("ul", "period-readonly");
     list.setAttribute("data-readonly", "todos");
     for (i = 0; i < items.length; i++) {
-      list.appendChild(el("li", null, (items[i].done ? "Done. " : "Not done. ") + String(items[i].text).trim()));
+      var row = el("li");
+      var own = el("span", null, String(items[i].text).trim());
+      own.setAttribute("data-own", "");
+      row.appendChild(document.createTextNode(items[i].done ? "Done. " : "Not done. "));
+      row.appendChild(own);
+      list.appendChild(row);
     }
     body.appendChild(list);
   }
@@ -517,7 +610,8 @@
       id: kind + ":last-todos",
       title: label,
       level: 3,
-      summary: todoSummary(label, items)
+      summary: todoSummary(label, items),
+      emoji: FOLD_EMOJI.last
     });
     renderReadonlyTodos(fold.body, items);
   }
@@ -529,7 +623,8 @@
       id: kind + (asGoals ? ":goals" : ":todos"),
       title: title,
       level: 3,
-      summary: todoSummary(title, items)
+      summary: todoSummary(title, items),
+      emoji: asGoals ? FOLD_EMOJI.goals : FOLD_EMOJI.todos
     });
     var slot = el("div", "period-todos");
     fold.body.appendChild(slot);
