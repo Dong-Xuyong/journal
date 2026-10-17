@@ -129,7 +129,7 @@ body.dx,
 }
 
 #main {
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--jn-gap) + env(safe-area-inset-bottom));
 }
 
 #main:focus {

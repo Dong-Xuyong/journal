@@ -16,7 +16,7 @@ const TODAY = "2026-10-17";
 
 function fixture() {
   const defs = [
-    { id: "thesis", label: "Thesis", emoji: "\uD83D\uDCDD" },
+    { id: "thesis", label: "Read!", emoji: "\uD83D\uDCDD" },
     { id: "training", label: "Training", emoji: "\uD83D\uDCAA" },
     { id: "food_logged", label: "Food logged", emoji: "\uD83C\uDF7D\uFE0F" },
     { id: "weigh_in", label: "Weigh in", emoji: "\u2696\uFE0F" },
@@ -85,9 +85,10 @@ function harness(data) {
   <link rel="stylesheet" href="/journal/next/css/base.css" />
   <link rel="stylesheet" href="/journal/next/css/habits.css" />
   <style>
-    html, body { margin: 0; background: #f6f4ef; }
+    html, body { margin: 0; background: #f6f4ef; color: #0d0b08; }
+    html.dark, html.dark body { background: #141414; color: #efeeec; }
     #main { box-sizing: border-box; padding: 8px; max-width: 100%; }
-    #period { margin: 0 0 8px; }
+    #period { margin: 0 0 8px; color: inherit; }
     .sr-only {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -143,13 +144,13 @@ function contentType(file) {
   return "application/octet-stream";
 }
 
-function startServer(html) {
+function startServer(pages) {
   const server = http.createServer(function (req, res) {
     try {
       const url = new URL(req.url, "http://127.0.0.1");
-      if (url.pathname === "/harness.html") {
+      if (pages[url.pathname]) {
         res.setHeader("content-type", "text/html; charset=utf-8");
-        res.end(html);
+        res.end(pages[url.pathname]);
         return;
       }
       let file = null;
@@ -280,7 +281,8 @@ async function axe(page, where) {
     return item.impact === "serious" || item.impact === "critical";
   });
   assert.deepEqual(bad.map(function (item) {
-    return item.id + ": " + item.help + " (" + item.nodes.length + ")";
+    const node = item.nodes[0] || {};
+    return item.id + ": " + item.help + " (" + item.nodes.length + ") " + (node.target || []).join(" ") + " " + String(node.html || "").slice(0, 180);
   }), [], where);
 }
 
@@ -290,11 +292,180 @@ async function openAll(page) {
   });
 }
 
+async function assertNoBannedColor(page, where) {
+  const hits = await page.evaluate(function () {
+    var banned = [
+      [159, 18, 57],
+      [154, 52, 18]
+    ];
+    var props = ["color", "backgroundColor", "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke", "boxShadow", "caretColor"];
+    var found = [];
+    function listed(value) {
+      var text = String(value || "");
+      var i;
+      for (i = 0; i < banned.length; i++) {
+        var rgb = banned[i][0] + ", " + banned[i][1] + ", " + banned[i][2];
+        var tight = banned[i][0] + "," + banned[i][1] + "," + banned[i][2];
+        if (text.indexOf(rgb) !== -1 || text.indexOf(tight) !== -1) return rgb;
+      }
+      return "";
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("#view, #view *"), function (el) {
+      var style = getComputedStyle(el);
+      props.forEach(function (prop) {
+        var hit = listed(style[prop]);
+        if (hit) found.push(prop + " " + hit + " " + (el.className || el.tagName));
+      });
+    });
+    return found.slice(0, 8);
+  });
+  assert.deepEqual(hits, [], where + " banned colour");
+}
+
+function reflectHarness() {
+  const data = {
+    version: 1,
+    habitDefs: [],
+    entries: {},
+    quotes: {},
+    reflections: {
+      questions: [
+        { id: "q1", text: "Really?!" },
+        { id: "q2", text: "Ship it! Then rest" }
+      ],
+      answers: {
+        q1: [{ date: "2026-10-16", text: "Yes!" }]
+      }
+    }
+  };
+  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  return `<!DOCTYPE html>
+<html lang="en" data-theme="light" style="color-scheme: light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reflections</title>
+  <link rel="stylesheet" href="/ui/shell.css" />
+  <link rel="stylesheet" href="/journal/next/css/base.css" />
+  <link rel="stylesheet" href="/journal/next/css/reflect.css" />
+  <style>
+    html, body { margin: 0; background: #f6f4ef; color: #0d0b08; }
+    html.dark, html.dark body { background: #141414; color: #efeeec; }
+    #main { box-sizing: border-box; padding: 8px; max-width: 100%; }
+    h2 { margin: 0 0 8px; font-size: 1.25rem; color: inherit; }
+  </style>
+</head>
+<body class="dx">
+  <main id="main">
+    <h2 id="period" tabindex="-1">Day</h2>
+    <div id="view"></div>
+  </main>
+  <div id="announce" class="sr-only" aria-live="polite"></div>
+  <script>localStorage.setItem("journal-next-cache", ${JSON.stringify(json)});</script>
+  <script src="/journal/next/js/data.js"></script>
+  <script src="/journal/next/js/ops.js"></script>
+  <script src="/journal/next/js/ui.js"></script>
+  <script src="/journal/next/js/views/reflect.js"></script>
+  <script>
+    window.__mode = "day";
+    window.__show = function (mode) {
+      window.__mode = mode;
+      var slot = document.getElementById("view");
+      if (mode === "year") JournalReflect.mount(slot, { mode: "year", year: "2026" });
+      else JournalReflect.mount(slot, { mode: "day", day: "2026-10-17" });
+    };
+    JournalOps.onChange(function () { window.__show(window.__mode); });
+    window.__show("day");
+  </script>
+</body>
+</html>`;
+}
+
+async function reflections(browser, origin) {
+  const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  const errors = [];
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+  page.on("pageerror", function (err) { errors.push(String(err)); });
+  await page.goto(origin + "/reflect.html", { waitUntil: "networkidle" });
+  assert.deepEqual(errors, []);
+  const outer = page.locator("[data-fold='day:reflection']");
+  await outer.waitFor();
+  assert.equal(await outer.locator(".fold-bar").first().locator(".fold-emoji").textContent(), "🪞");
+  assert.match(await outer.locator(".fold-line").first().innerText(), /^Reflection · today: Q\d · \d+ answered$/);
+  assertNoXScroll(await scrollWidth(page), "reflect closed");
+  await axe(page, "reflect axe closed");
+  const closedHeight = await outer.evaluate(function (el) { return el.getBoundingClientRect().height; });
+  assert.ok(closedHeight <= 48, "reflection fold " + closedHeight);
+  await outer.locator(".fold-summary").first().click();
+  const box = outer.locator("textarea").first();
+  const save = outer.locator(".reflect-save").first();
+  assert.equal(await box.getAttribute("rows"), "4");
+  const saveBox = await save.boundingBox();
+  assert.ok(saveBox && saveBox.height >= 31.5 && saveBox.height <= 36, "save height " + (saveBox && saveBox.height));
+  assert.ok(saveBox && saveBox.width >= 31.5, "save width");
+  await page.locator("[data-fold='day:reflection-all'] .fold-summary").first().click();
+  const innerEmoji = await page.$$eval("#view .fold-summary", function (nodes) {
+    return nodes.filter(function (el) {
+      var fold = el.closest(".fold");
+      return fold && fold.getAttribute("data-fold") !== "day:reflection";
+    }).map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
+  });
+  assert.ok(innerEmoji.length >= 3, "inner folds " + innerEmoji.length);
+  innerEmoji.forEach(function (count) { assert.equal(count, 0); });
+  const questions = await page.locator(".reflect-question").allTextContents();
+  assert.ok(questions.indexOf("Really?") !== -1, questions.join(" | "));
+  assert.ok(questions.indexOf("Ship it. Then rest") !== -1, questions.join(" | "));
+  questions.forEach(function (text) { assert.equal(text.indexOf("!"), -1, text); });
+  assert.ok((await page.locator("[data-own]").allTextContents()).indexOf("Yes!") !== -1);
+  await save.click();
+  const note = outer.locator(".reflect-note").first();
+  assert.equal(await note.textContent(), "Write an answer first.");
+  const noteColor = await note.evaluate(function (el) { return getComputedStyle(el).color; });
+  assert.equal(/rgba?\(\s*159\s*,\s*18\s*,\s*57|rgba?\(\s*185\s*,\s*28\s*,\s*28|rgba?\(\s*220\s*,\s*38\s*,\s*38/.test(noteColor), false, noteColor);
+  await box.fill("Answer A");
+  await box.press("Control+Enter");
+  await page.waitForTimeout(80);
+  await box.fill("Answer B");
+  await box.press("Control+Enter");
+  await page.waitForTimeout(80);
+  let own = await page.locator(".reflect-today [data-own]").allTextContents();
+  assert.equal(own.filter(function (text) { return text === "Answer A"; }).length, 1);
+  assert.equal(own.filter(function (text) { return text === "Answer B"; }).length, 1);
+  await box.fill("Answer A");
+  await box.press("Control+Enter");
+  await page.waitForTimeout(80);
+  assert.match(await page.locator("#announce").innerText(), /already saved/);
+  own = await page.locator(".reflect-today [data-own]").allTextContents();
+  assert.equal(own.filter(function (text) { return text === "Answer A"; }).length, 1, own.join(" | "));
+  assert.equal(own.filter(function (text) { return text === "Answer B"; }).length, 1, own.join(" | "));
+  const savedNote = await outer.locator(".reflect-note").first().textContent();
+  assert.equal(savedNote, "That answer is already saved.");
+  assertNoXScroll(await scrollWidth(page), "reflect open");
+  await axe(page, "reflect axe open");
+  await page.evaluate(function () { document.documentElement.classList.add("dark"); });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await axe(page, "reflect axe dark");
+  await page.evaluate(function () { window.__show("year"); });
+  const year = page.locator("[data-fold='year:reflection:2026']");
+  assert.equal(await year.locator(".fold-bar").first().locator(".fold-emoji").textContent(), "🪞");
+  assert.equal(await year.locator("textarea").count(), 0);
+  assert.ok((await page.locator("[data-own]").allTextContents()).indexOf("Yes!") !== -1);
+  const yearInner = await page.$$eval("[data-fold='year:reflection:2026'] .fold .fold-summary", function (nodes) {
+    return nodes.map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
+  });
+  yearInner.forEach(function (count) { assert.equal(count, 0); });
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log("reflections ok");
+}
+
 async function main() {
   assert.ok(fs.existsSync(shellPath), "shell.css missing");
   const data = fixture();
   const html = harness(data);
-  const server = await startServer(html);
+  const reflectHtml = reflectHarness();
+  const server = await startServer({ "/harness.html": html, "/reflect.html": reflectHtml });
   const origin = "http://127.0.0.1:" + server.address().port;
   const puts = [];
   const errors = [];
@@ -319,19 +490,55 @@ async function main() {
 
     const closed = await page.$$eval("#view .fold", function (nodes) { return nodes.map(function (el) { return el.open; }); });
     assert.ok(closed.length === 5 && closed.every(function (open) { return open === false; }), "folds start closed");
-    const todayText = await page.locator("[data-fold='habit-today'] .fold-summary").innerText();
+    const todayText = await page.locator("[data-fold='habit-today'] .fold-line").innerText();
     assert.match(todayText, /Today/);
-    assert.match(todayText, /^Today · 4 of 7 done$/);
+    assert.equal(todayText, "Today · 4 of 7 done");
     assert.equal(await page.locator("[data-fold='habit-effort']").count(), 0, "no Effort fold");
-    assert.match(await page.locator("[data-fold='habit-streaks'] .fold-summary").innerText(), /Streaks · 4 on a streak/);
-    assert.match(await page.locator("[data-fold='habit-year'] .fold-summary").innerText(), /Year in days · 17 days logged/);
-    assert.match(await page.locator("[data-fold='habit-weeks'] .fold-summary").innerText(), /Week by week · \d+% done/);
-    assert.match(await page.locator("[data-fold='habit-months'] .fold-summary").innerText(), /Month by month · \d+% done/);
+    assert.match(await page.locator("[data-fold='habit-streaks'] .fold-line").innerText(), /Streaks · 4 on a streak/);
+    assert.match(await page.locator("[data-fold='habit-year'] .fold-line").innerText(), /Year in days · 17 days logged/);
+    assert.match(await page.locator("[data-fold='habit-weeks'] .fold-line").innerText(), /Week by week · \d+% done/);
+    assert.match(await page.locator("[data-fold='habit-months'] .fold-line").innerText(), /Month by month · \d+% done/);
     const pictograph = /\p{Extended_Pictographic}/u;
-    const summaries = await page.$$eval("#view .fold-summary", function (nodes) { return nodes.map(function (el) { return el.innerText; }); });
-    summaries.forEach(function (text) { assert.equal(pictograph.test(text), false, text); });
+    const lines = await page.$$eval("#view .fold-line", function (nodes) { return nodes.map(function (el) { return el.textContent; }); });
+    lines.forEach(function (text) { assert.equal(pictograph.test(text), false, text); });
+    const emojiCounts = await page.$$eval("#view .fold-summary", function (nodes) {
+      return nodes.map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
+    });
+    assert.deepEqual(emojiCounts, [1, 1, 1, 1, 1]);
+    const todayDots = page.locator("[data-fold='habit-today'] .fold-summary .jn-dots");
+    assert.equal(await todayDots.getAttribute("aria-hidden"), "true");
+    assert.equal(await todayDots.locator(".jn-dot").count(), 7);
+    assert.equal(await todayDots.locator(".jn-dot.on").count(), 4);
+    assert.equal(await page.locator("[data-today-habit='thesis'] .today-name").textContent(), "Read.");
+    assert.equal((await page.locator("#view").textContent()).indexOf("Read!"), -1);
+    assert.match(await page.locator("[data-habit='thesis'] .streak-text").textContent(), /^Read\. · \d+ days? · best \d+ · today /);
+    const geometry = await page.evaluate(function () {
+      var folds = Array.prototype.slice.call(document.querySelectorAll("#view > .fold"));
+      var heights = folds.map(function (el) { return el.getBoundingClientRect().height; });
+      var pads = folds.map(function (el) { return parseFloat(getComputedStyle(el).paddingTop); });
+      var gaps = [];
+      var i;
+      var bottom = 0;
+      for (i = 1; i < folds.length; i++) gaps.push(folds[i].getBoundingClientRect().top - folds[i - 1].getBoundingClientRect().bottom);
+      Array.prototype.forEach.call(document.querySelectorAll("#main > *"), function (el) {
+        bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+      });
+      return { heights: heights, pads: pads, gaps: gaps, page: bottom };
+    });
+    geometry.heights.forEach(function (h) { assert.ok(h <= 48, "closed fold " + h); });
+    geometry.pads.forEach(function (pad) { assert.ok(pad <= 12, "padding " + pad); });
+    geometry.gaps.forEach(function (gap) { assert.ok(gap <= 10, "gap " + gap); });
+    assert.ok(geometry.page <= 520, "closed page " + geometry.page);
     assertNoXScroll(await scrollWidth(page), "closed");
     await axe(page, "axe closed");
+    fs.mkdirSync("/opt/cursor/artifacts", { recursive: true });
+    await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-closed-light.png" });
+    await page.locator("[data-fold='habit-today'] .fold-summary").click();
+    await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-today-open-light.png" });
+    await page.locator("[data-fold='habit-today'] .fold-summary").click();
+    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
+    await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-streaks-open-light.png" });
+    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
 
     const summariesLoc = page.locator("#view .fold-summary");
     const summaryCount = await summariesLoc.count();
@@ -373,7 +580,10 @@ async function main() {
     assert.ok(controls.length > 40, "expected many controls, got " + controls.length);
     controls.forEach(function (control) {
       assert.ok(control.name.length > 0, "missing name " + control.tag + " " + control.id);
-      assert.ok(control.w >= 43.5 && control.h >= 43.5, "tap target " + control.w.toFixed(1) + "x" + control.h.toFixed(1) + " " + control.name.slice(0, 60));
+      assert.ok(control.w >= 23.5 && control.h >= 23.5, "24px floor " + control.w.toFixed(1) + "x" + control.h.toFixed(1) + " " + control.name.slice(0, 60));
+      if (control.tag === "BUTTON" || control.tag === "A" || control.tag === "SUMMARY" || control.tag === "INPUT" || control.tag === "TEXTAREA") {
+        assert.ok(control.w >= 31.5 && control.h >= 31.5, "32px target " + control.w.toFixed(1) + "x" + control.h.toFixed(1) + " " + control.name.slice(0, 60));
+      }
     });
 
     await page.locator("#period").focus();
@@ -448,7 +658,7 @@ async function main() {
     await page.goto(origin + "/harness.html#habits/training", { waitUntil: "networkidle" });
     await openAll(page);
     assert.equal(await page.locator("[data-select='training']").first().getAttribute("aria-pressed"), "true");
-    assert.match(await page.locator("[data-fold='habit-year'] .fold-summary").innerText(), /Training/);
+    assert.match(await page.locator("[data-fold='habit-year'] .fold-line").innerText(), /Training/);
     const miss = page.locator("button.hcell.miss").first();
     const unknown = page.locator("button.hcell.unknown").first();
     assert.equal(await miss.getAttribute("data-status"), "miss");
@@ -493,7 +703,40 @@ async function main() {
     assert.equal(parsed["habit-today"], true);
     assert.equal(puts.length, 0);
     assert.deepEqual(errors, []);
+    await openAll(page);
+    const rowEmoji = await page.$$eval("[data-today-habit], .streak-row", function (nodes) {
+      return nodes.map(function (el) { return el.querySelectorAll(".habit-emoji").length; });
+    });
+    rowEmoji.forEach(function (count) { assert.equal(count, 1); });
+    await assertNoBannedColor(page, "light");
+    const bigType = await page.evaluate(function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll("#view *"), function (el) {
+        var size = parseFloat(getComputedStyle(el).fontSize);
+        if (size > 20.5) bad.push((el.className || el.tagName) + " " + size);
+      });
+      return bad;
+    });
+    assert.deepEqual(bigType, []);
+    assert.equal(await page.locator("#view [class*='ring']").count(), 0);
+    const stopSize = await page.$$eval(".trend-stop", function (nodes) {
+      return nodes.filter(function (el) {
+        var box = el.getBoundingClientRect();
+        return box.width < 31.5 || box.height < 31.5;
+      }).length;
+    });
+    assert.equal(stopSize, 0, "trend stops are 32px");
+    await page.evaluate(function () { document.documentElement.classList.add("dark"); });
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    assertNoXScroll(await scrollWidth(page), "dark open");
+    await assertNoBannedColor(page, "dark");
+    await axe(page, "axe dark open");
+    await page.evaluate(function () {
+      Array.prototype.forEach.call(document.querySelectorAll("#view .fold"), function (el) { el.open = false; });
+    });
+    await axe(page, "axe dark closed");
     console.log("habits ok");
+    await reflections(browser, origin);
   } finally {
     if (browser) await browser.close();
     await new Promise(function (resolve) { server.close(resolve); });

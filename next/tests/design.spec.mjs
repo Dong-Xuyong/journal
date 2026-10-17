@@ -1,8 +1,7 @@
 /**
  * Design pass checks for the rebuilt journal.
- * Builder 1's exit code is the helper and frame checks.
- * Route checks are the contract for the day, period, and habits views.
- * They run on every invocation and fail the process when DESIGN_ROUTES=1.
+ * Helper and frame checks, then the route contract for the day, period, and habits views.
+ * Any failure fails the process.
  * Run: node next/tests/design.spec.mjs
  */
 import { spawn, execSync } from "node:child_process";
@@ -366,7 +365,7 @@ async function scanRoute(page, hash) {
       var line = button.querySelector(".fold-line");
       if (line && emojiCount(line.textContent)) emoji.push("line " + line.textContent.slice(0, 40));
       if (!nested && count !== 1) emoji.push("top " + count + " " + (line ? line.textContent : "").slice(0, 40));
-      if (question && count !== 0) emoji.push("question " + count);
+      if (nested && question && count !== 0) emoji.push("question " + count);
       if (nested && !question && count > 1) emoji.push("nested " + count);
     });
     Array.prototype.forEach.call(document.querySelectorAll("li, p, .jn-chip"), function (el) {
@@ -468,6 +467,18 @@ async function routes(page) {
       }
     }
   }
+  await go(page, "#day/2026-10-17");
+  await page.evaluate(function () {
+    document.querySelectorAll("#view .fold").forEach(function (el) { el.open = true; });
+  });
+  const mine = await page.evaluate(function () {
+    return {
+      todos: Array.prototype.map.call(document.querySelectorAll("#view textarea[data-own]"), function (el) { return el.value; }),
+      answers: Array.prototype.map.call(document.querySelectorAll("#view .reflect-answer[data-own]"), function (el) { return el.textContent; })
+    };
+  });
+  check("route", "Dong's to-do shows as typed", mine.todos.indexOf("Call mum!") !== -1, mine.todos.join(" | "));
+  check("route", "Dong's answer shows as typed", mine.answers.indexOf("Yes!") !== -1, mine.answers.join(" | "));
 }
 
 async function main() {
@@ -484,9 +495,8 @@ async function main() {
     if (server) server.kill();
   }
   console.log(own ? "design.spec: " + own + " helper or frame check(s) failed" : "design.spec: passed");
-  console.log(routeFailures ? "design.spec routes: " + routeFailures + " failed (builders 2-4)" : "design.spec routes: passed");
-  if (own) process.exit(1);
-  if (routeFailures && process.env.DESIGN_ROUTES === "1") process.exit(1);
+  console.log(routeFailures ? "design.spec routes: " + routeFailures + " failed" : "design.spec routes: passed");
+  if (own || routeFailures) process.exit(1);
 }
 
 main().catch(function (err) {

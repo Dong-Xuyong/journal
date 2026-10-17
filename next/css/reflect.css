@@ -4,9 +4,32 @@
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  margin: 0 0 var(--jn-gap, 8px);
+  padding: 3px 10px;
   background-color: var(--dx-card-solid, #ffffff);
   color: var(--dx-text, #0d0b08);
   overflow-wrap: anywhere;
+}
+
+.reflect-fold > .fold-bar > .fold-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reflect-fold > .fold-bar .fold-summary {
+  min-height: var(--jn-row, 40px);
+  height: var(--jn-row, 40px);
+  padding: 0;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+.reflect-fold .fold-emoji {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .reflect-fold,
@@ -18,6 +41,17 @@ html.dark .reflect-fold,
 html[data-theme="dark"] .reflect-fold {
   background-color: var(--dx-card-solid, #1f1f1f);
   color: var(--dx-text, #efeeec);
+}
+
+html.dark .reflect-kicker,
+html.dark .reflect-when,
+html.dark .reflect-note,
+html.dark .reflect-count,
+html[data-theme="dark"] .reflect-kicker,
+html[data-theme="dark"] .reflect-when,
+html[data-theme="dark"] .reflect-note,
+html[data-theme="dark"] .reflect-count {
+  color: var(--jn-muted, #d4d4d4);
 }
 
 .reflect-fold .reflect-fold {
@@ -35,7 +69,7 @@ html[data-theme="dark"] .reflect-fold {
 .reflect-when,
 .reflect-note,
 .reflect-count {
-  color: var(--dx-muted, #5c574f);
+  color: var(--jn-muted, #4b453f);
 }
 
 .reflect-kicker,
@@ -82,9 +116,9 @@ html[data-theme="dark"] .reflect-fold {
   display: block;
   width: 100%;
   max-width: 100%;
-  min-height: 88px;
+  min-height: 0;
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 2px solid var(--dx-muted, #5c574f);
   border-radius: 10px;
   background: var(--dx-card-solid, #ffffff);
@@ -111,9 +145,10 @@ html[data-theme="dark"] .reflect-box {
 }
 
 .reflect-save {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 16px;
+  min-width: var(--jn-tap, 32px);
+  min-height: var(--jn-tap, 32px);
+  height: var(--jn-tap, 32px);
+  padding: 0 12px;
   border: 2px solid var(--dx-accent, #1d4ed8);
   border-radius: 10px;
   background: var(--dx-accent, #1d4ed8);
