@@ -1,0 +1,205 @@
+/* Reflections. Opaque cards so text stays 4.5:1 on the shell art. */
+
+.reflect-fold {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background-color: var(--dx-card-solid, #ffffff);
+  color: var(--dx-text, #0d0b08);
+  overflow-wrap: anywhere;
+}
+
+.reflect-fold,
+.reflect-fold * {
+  box-sizing: border-box;
+}
+
+html.dark .reflect-fold,
+html[data-theme="dark"] .reflect-fold {
+  background-color: var(--dx-card-solid, #1f1f1f);
+  color: var(--dx-text, #efeeec);
+}
+
+.reflect-fold .reflect-fold {
+  margin-top: 8px;
+  box-shadow: none;
+}
+
+.reflect-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.reflect-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.reflect-fold > summary::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--dx-text, #0d0b08);
+}
+
+.reflect-fold[open] > summary::before {
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--dx-text, #0d0b08);
+  border-bottom: 0;
+}
+
+.reflect-fold > summary .fold-line,
+.reflect-fold > summary h2,
+.reflect-fold > summary h3,
+.reflect-fold > summary h4,
+.reflect-fold > summary h5,
+.reflect-fold > summary h6 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.reflect-fold > summary:focus-visible,
+.reflect-box:focus-visible,
+.reflect-save:focus-visible {
+  outline: 3px solid var(--dx-accent, #1d4ed8);
+  outline-offset: 2px;
+}
+
+.reflect-kicker,
+.reflect-when,
+.reflect-note,
+.reflect-count {
+  color: var(--dx-muted, #5c574f);
+}
+
+.reflect-kicker,
+.reflect-count,
+.reflect-note {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.reflect-today {
+  min-width: 0;
+}
+
+.reflect-field {
+  display: block;
+  min-width: 0;
+  margin: 0 0 8px;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.reflect-question,
+.reflect-answer,
+.reflect-empty {
+  display: block;
+  margin: 0 0 8px;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.reflect-answer,
+.reflect-empty {
+  font-weight: 400;
+  white-space: pre-wrap;
+}
+
+.reflect-box {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 88px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--dx-muted, #5c574f);
+  border-radius: 10px;
+  background: var(--dx-card-solid, #ffffff);
+  color: var(--dx-text, #0d0b08);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+html.dark .reflect-box,
+html[data-theme="dark"] .reflect-box {
+  background: var(--dx-card-solid, #1f1f1f);
+  color: var(--dx-text, #efeeec);
+  border-color: var(--dx-muted, #b8b8b8);
+}
+
+.reflect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.reflect-save {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--dx-accent, #1d4ed8);
+  border-radius: 10px;
+  background: var(--dx-accent, #1d4ed8);
+  color: var(--dx-accent-fg, #ffffff);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reflect-answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reflect-answers li {
+  min-width: 0;
+  margin: 0 0 8px;
+  padding-top: 8px;
+  border-top: 2px solid var(--dx-muted, #5c574f);
+}
+
+.reflect-when {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.reflect-digest {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reflect-fold,
+  .reflect-fold * {
+    transition: none;
+  }
+}
