@@ -59,8 +59,47 @@
   function paintStatus() {
     var state = Ops.status();
     var text = STATUS_TEXT[state] || "";
-    if (!hasToken()) text = hasQueue() ? "Saved on this device" : "Not synced";
+    var error = state === "error";
+    if (!hasToken()) {
+      text = hasQueue() ? "Saved on this device" : "Not synced";
+      error = false;
+    }
     if (syncLabel.textContent !== text) syncLabel.textContent = text;
+    syncLabel.classList.toggle("is-error", error);
+  }
+
+  var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function shortKey(key) {
+    var kind = Data.kindOf(key);
+    var value = String(key || "");
+    if (kind === "year") return value;
+    if (kind === "quarter") return "Q" + value.slice(6);
+    if (kind === "month") return MONTHS_SHORT[Number(value.slice(5, 7)) - 1] || value;
+    if (kind === "week") return "W" + Number(value.slice(6));
+    if (kind === "day") return String(Number(value.slice(8, 10)));
+    return value;
+  }
+
+  function hasWord(name, word) {
+    var parts = String(name).split(/[^A-Za-z0-9]+/);
+    var i;
+    for (i = 0; i < parts.length; i++) if (parts[i] === word) return true;
+    return false;
+  }
+
+  function fullCrumb(key) {
+    var kind = Data.kindOf(key);
+    var short = shortKey(key);
+    var name = KIND_WORD[kind] + " \u00b7 " + (Data.label(key) || key);
+    if (!hasWord(name, short)) name += " \u00b7 " + short;
+    return name;
+  }
+
+  function shownHabit(id) {
+    var label = habitLabel(id);
+    if (!label) return "";
+    return UI && UI.plain ? UI.plain(label) : label;
   }
 
   function readRoute() {
@@ -110,16 +149,18 @@
   function paintCrumbs() {
     var list = document.createElement("ol");
     var chain;
+    var habit = shownHabit(route.key);
     crumbs.textContent = "";
     if (route.kind === "habits") {
-      chain = [{ href: "#habits", text: "Habits", current: !habitLabel(route.key) }];
-      if (habitLabel(route.key)) chain.push({ href: "#habits/" + encodeURIComponent(route.key), text: habitLabel(route.key), current: true });
+      chain = [{ href: "#habits", text: "Habits", name: "Habits", current: !habit }];
+      if (habit) chain.push({ href: "#habits/" + encodeURIComponent(route.key), text: habit, name: "Habits \u00b7 " + habit, current: true });
     } else {
       chain = Data.ancestors(route.key).slice().reverse().concat([route.key]).map(function (key, index, all) {
         var kind = Data.kindOf(key);
         return {
           href: "#" + kind + "/" + key,
-          text: KIND_WORD[kind] + " \u00b7 " + Data.label(key),
+          text: shortKey(key),
+          name: fullCrumb(key),
           current: index === all.length - 1
         };
       });
@@ -129,6 +170,7 @@
       var link = document.createElement("a");
       link.href = item.href;
       link.textContent = item.text;
+      link.setAttribute("aria-label", item.name || item.text);
       if (item.current) link.setAttribute("aria-current", "page");
       li.appendChild(link);
       list.appendChild(li);
@@ -190,7 +232,7 @@
     paintTabs();
     paintCrumbs();
     paintNav();
-    if (route.kind === "habits") title = habitLabel(route.key) ? "Habits \u00b7 " + habitLabel(route.key) : "Habits";
+    if (route.kind === "habits") title = shownHabit(route.key) ? "Habits \u00b7 " + shownHabit(route.key) : "Habits";
     else title = Data.label(route.key) || KIND_WORD[route.kind];
     heading.textContent = title;
     document.title = title + " \u00b7 Journal";
@@ -199,7 +241,7 @@
     if (typeof Views[route.kind] === "function") {
       Views[route.kind](view, { key: route.key, today: Data.todayKey("day") });
     } else {
-      view.appendChild(UI.el("p", "empty-line", "This part did not load. Reload the page."));
+      view.appendChild(UI.el("p", "empty-line is-error", "This part did not load. Reload the page."));
     }
     paintedVersion = Data.version ? Data.version() : paintedVersion;
     paintConnect();

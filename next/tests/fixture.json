@@ -8,10 +8,11 @@
     { "id": "weigh_in", "label": "Weigh in", "emoji": "⚖️" },
     { "id": "speaking", "label": "Speaking", "emoji": "🗣️" },
     { "id": "sunlight", "label": "Sunlight", "emoji": "☀️" },
-    { "id": "protein_breakfast", "label": "Protein breakfast", "emoji": "🥚" }
+    { "id": "protein_breakfast", "label": "Protein breakfast", "emoji": "🥚" },
+    { "id": "read", "label": "Read!", "emoji": "📖" }
   ],
   "quotes": {
-    "2026-10-17": { "text": "The obstacle is the way. — Marcus Aurelius", "updatedAt": "2026-10-17T06:00:00.000Z" }
+    "2026-10-17": { "text": "Keep going!", "updatedAt": "2026-10-17T06:00:00.000Z" }
   },
   "days": {
     "2026-10-14": { "sleep": 7.2, "mood": 4, "energy": 3 },
@@ -32,7 +33,8 @@
     ],
     "answers": {
       "q1": [{ "date": "2026-10-13", "text": "Write a book on Portuguese law for engineers." }],
-      "q5": [{ "date": "2026-10-16", "text": "That he was kind and kept his word." }]
+      "q5": [{ "date": "2026-10-16", "text": "That he was kind and kept his word." }],
+      "q2": [{ "date": "2026-10-17", "text": "Yes!" }]
     }
   },
   "entries": {
@@ -51,7 +53,7 @@
       "fields": {
         "mood": 4,
         "energy": 4,
-        "focus": "Ship",
+        "focus": "Ship it!",
         "priorities": ["Finish chapter 3 draft", "Call the bank", "Run 5k"],
         "failureCost": "The draft slips another week.",
         "ifThen": "If I open Slack, then I close it and write one paragraph.",
@@ -73,7 +75,8 @@
       },
       "todos": [
         { "id": "t1", "text": "Finish chapter 3 draft", "done": false, "mit": true },
-        { "id": "t2", "text": "Call the bank", "done": true }
+        { "id": "t2", "text": "Call the bank", "done": true },
+        { "id": "t3", "text": "Call mum!", "done": true }
       ],
       "habits": { "thesis": true, "training": false, "food_logged": true, "weigh_in": null, "speaking": true, "sunlight": true, "protein_breakfast": true },
       "habitStreaks": { "thesis": 4, "training": 0 }
@@ -82,7 +85,7 @@
       "updatedAt": "2026-10-12T09:00:00.000Z",
       "fields": {
         "enjoyment": "green",
-        "why": "Momentum on the thesis.",
+        "why": "Great week!!",
         "oneThing": "Chapter 3 draft",
         "wins": "Three writing days.",
         "accomplishments": "Outline done.",

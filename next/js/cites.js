@@ -24,11 +24,13 @@
   function cite(key) {
     var item = Object.prototype.hasOwnProperty.call(CITES, key) ? CITES[key] : null;
     var video = item ? VIDEOS[item.video] : null;
+    var text = item ? item.text : "";
+    if (text && window.JournalUI && typeof window.JournalUI.plain === "function") text = window.JournalUI.plain(text);
     return {
       key: key,
       title: video ? video.title : "",
       by: video ? video.by : "",
-      text: item ? item.text : ""
+      text: text
     };
   }
 

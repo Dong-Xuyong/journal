@@ -33,6 +33,44 @@
     return value.slice(0, max - 1).trim() + "\u2026";
   }
 
+  // Display-only. Stored to-dos and reflection answers stay as typed.
+  function plain(text) {
+    var value = String(text == null ? "" : text);
+    value = value.replace(/!\?|\?!/g, "?");
+    value = value.replace(/!+(?=\s|$)/g, ".");
+    value = value.replace(/!/g, "");
+    return value;
+  }
+
+  function dots(value, max, label) {
+    var empty = value == null;
+    var count = Math.max(0, Math.round(Number(max) || 0));
+    var filled = empty ? 0 : Math.round(Number(value));
+    var span = el("span", empty ? "jn-dots is-empty" : "jn-dots");
+    var name = String(label == null ? "" : label);
+    var i;
+    if (filled !== filled || filled < 0) filled = 0;
+    span.setAttribute("role", "img");
+    span.setAttribute("aria-label", empty ? name + " not logged" : name + " " + filled + " of " + count);
+    for (i = 0; i < count; i++) span.appendChild(el("span", !empty && i < filled ? "jn-dot on" : "jn-dot"));
+    return span;
+  }
+
+  function chip(opts) {
+    opts = opts || {};
+    var node = el("span", "jn-chip");
+    var emoji;
+    if (opts.emoji) {
+      emoji = el("span", "jn-chip-emoji", String(opts.emoji));
+      emoji.setAttribute("aria-hidden", "true");
+      node.appendChild(emoji);
+    }
+    if (opts.label) node.appendChild(el("span", "jn-chip-label", String(opts.label)));
+    if (opts.max != null) node.appendChild(dots(opts.value, opts.max, opts.label));
+    else if (opts.text != null) node.appendChild(el("span", "jn-chip-text", String(opts.text)));
+    return node;
+  }
+
   function readFolds() {
     try {
       var data = JSON.parse(localStorage.getItem(FOLD_KEY) || "{}");
@@ -63,11 +101,14 @@
     var line = String(opts.summary || title);
     var level = Number(opts.level);
     var id = String(opts.id || title);
+    var emoji = opts.emoji ? String(opts.emoji) : "";
     var root = el("section", "card dx-card fold");
     var bar = el("div", "fold-bar");
     var heading;
     var button = el("button", "fold-summary");
     var body = el("div", "fold-body fold-panel");
+    var lineNode = el("span", "fold-line", line);
+    var emojiNode;
     var panelId = domId("panel", id);
     if (!(level >= 2 && level <= 6)) level = 3;
     heading = el("h" + level, "fold-heading");
@@ -75,7 +116,12 @@
     button.type = "button";
     button.setAttribute("aria-controls", panelId);
     button.setAttribute("data-focus", "fold:" + id);
-    button.appendChild(el("span", "fold-line", line));
+    if (emoji) {
+      emojiNode = el("span", "fold-emoji", emoji);
+      emojiNode.setAttribute("aria-hidden", "true");
+      button.appendChild(emojiNode);
+    }
+    button.appendChild(lineNode);
     heading.appendChild(button);
     bar.appendChild(heading);
     body.id = panelId;
@@ -110,7 +156,7 @@
       apply(!root.open, true);
     });
     apply(readFolds()[id] === true, false);
-    return { root: root, body: body, line: button.firstChild };
+    return { root: root, body: body, line: lineNode };
   }
 
   function citation(key) {
@@ -142,7 +188,7 @@
     tip.hidden = true;
     tip.setAttribute("role", "note");
     if (cite) {
-      tip.appendChild(el("span", "info-text", cite.text));
+      tip.appendChild(el("span", "info-text", plain(cite.text)));
       if (cite.title) tip.appendChild(el("span", "info-by", cite.title + (cite.by ? " (" + cite.by + ")" : "")));
     } else {
       tip.appendChild(el("span", "info-text", "A short note on why this prompt is here."));
@@ -184,7 +230,7 @@
   function grow(area) {
     if (!area.offsetParent) return;
     area.style.height = "auto";
-    area.style.height = Math.max(44, area.scrollHeight) + "px";
+    area.style.height = Math.max(32, area.scrollHeight) + "px";
   }
 
   function todoText(todo) {
@@ -212,6 +258,7 @@
       var btn;
       if (!pending || pending.key !== key) return;
       row = el("li", "undo-row");
+      row.setAttribute("data-own", "todo");
       row.appendChild(el("span", "", "Deleted " + (pending.text || "a to-do") + "."));
       btn = el("button", "dx-btn dx-btn--ghost", "Undo");
       btn.type = "button";
@@ -252,12 +299,14 @@
     var area = el("textarea");
     var del = el("button", "del dx-btn dx-btn--ghost", "Delete");
     var text = todoText(todo);
+    item.setAttribute("data-own", "todo");
     check.type = "checkbox";
     check.checked = !!todo.done;
     check.setAttribute("aria-label", (text || "To-do") + ", done");
     check.setAttribute("data-focus", focusId(key, todo.id, "check"));
     area.rows = 1;
     area.value = todo.text || "";
+    area.setAttribute("data-own", "todo");
     area.placeholder = opts.yearStatus ? "Write a goal" : "Write a to-do";
     area.setAttribute("aria-label", text ? "Edit " + text : "New to-do");
     area.setAttribute("data-focus", focusId(key, todo.id, "text"));
@@ -359,6 +408,10 @@
     el: el,
     oneLine: oneLine,
     clip: clip,
+    plain: plain,
+    dots: dots,
+    chip: chip,
+    STATUS: { error: "is-error", done: "is-done", miss: "is-miss", unknown: "is-unknown" },
     fold: fold,
     info: info,
     todoList: todoList,
