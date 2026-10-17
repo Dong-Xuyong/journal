@@ -100,7 +100,6 @@ html.dark .period-view,
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
   margin-bottom: 2px;
 }
 
@@ -160,14 +159,6 @@ html.dark .period-view,
   min-height: var(--jn-tap, 32px);
   margin-top: 2px;
   padding: 4px 2px;
-}
-
-.period-view .info-btn {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
 }
 
 .period-view a:focus,

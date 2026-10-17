@@ -156,6 +156,7 @@ async function routes(browser) {
       };
     });
     check(hash + " is read-only", info.controls === 0 && openControls.n === 0 && !openControls.edit.length, JSON.stringify(openControls));
+    check(hash + " has no info buttons", (await page.locator(".info-btn").count()) === 0);
     if (hash.indexOf("#habits") !== 0) {
       const apps = await page.evaluate(function () { return document.querySelectorAll('#view a[href*="dong-xuyong.github.io"], #view a[href^="../"], #view a[href^="/"]').length; });
       check(hash + " has no other-app links", apps === 0, String(apps));
@@ -195,21 +196,40 @@ async function dayCopy(browser) {
   ["If-then plan", "Daily affirmation", "Chosen or autopilot", "If the first priority is skipped"].forEach(function (label) {
     check("old label gone: " + label, text.indexOf(label) === -1);
   });
-  await page.locator('[data-field="failureCost"] .info-btn').click();
-  const tip = await page.evaluate(function () {
-    const field = document.querySelector('[data-field="failureCost"]');
+  check("no info buttons on the day", (await page.locator(".info-btn").count()) === 0);
+  const morning = await page.evaluate(function () {
+    function emoji(id) {
+      var node = document.querySelector('[data-field="' + id + '"] .day-sub-emoji');
+      return node ? node.textContent : "";
+    }
+    var great = document.querySelector('[data-field="makeGreat"]');
+    var focus = document.querySelector('[data-field="focus"] .day-focus-pill');
     return {
-      label: field.querySelector(".day-label").getBoundingClientRect().width,
-      tip: field.querySelector(".info-tip").getBoundingClientRect().width,
-      sw: document.documentElement.scrollWidth,
-      text: field.querySelector(".info-text").textContent
+      emojis: {
+        focus: emoji("focus"),
+        priorities: emoji("priorities"),
+        failureCost: emoji("failureCost"),
+        grateful: emoji("grateful"),
+        makeGreat: emoji("makeGreat")
+      },
+      accents: ["focus", "priorities", "skip", "grateful", "great"].filter(function (name) {
+        return !!document.querySelector('.day-accent[data-accent="' + name + '"]');
+      }),
+      focus: focus ? focus.textContent : "",
+      items: great ? Array.prototype.map.call(great.querySelectorAll("ul > li"), function (li) { return li.textContent; }) : [],
+      dash: great ? great.textContent.indexOf("- ") : -1,
+      marks: Array.prototype.map.call(document.querySelectorAll("#view .jn-mark"), function (node) { return node.textContent; }),
+      sw: document.documentElement.scrollWidth
     };
   });
-  check("tip text comes from cites.js", tip.text === "Seeing what you lose if you skip it makes you more likely to do it.", tip.text);
-  check("open tip sits under the label at full width", tip.label > 150 && tip.tip > 250 && tip.sw <= 360, JSON.stringify(tip));
-  const tipAxe = await axeBad(page);
-  check("axe AA with a tip open", !tipAxe.length, tipAxe.join("; "));
-  await page.keyboard.press("Escape");
+  check("morning sub-heading emojis", morning.emojis.focus === "\uD83C\uDFAF" && morning.emojis.priorities === "\uD83D\uDCCC" && morning.emojis.failureCost === "\uD83D\uDD01" && morning.emojis.grateful === "\uD83D\uDE4F" && morning.emojis.makeGreat === "\uD83C\uDF1F", JSON.stringify(morning.emojis));
+  check("morning accents", morning.accents.length === 5, morning.accents.join(","));
+  check("focus is a pill", morning.focus === "Ship it.", JSON.stringify(morning.focus));
+  check("makeGreat is a list", JSON.stringify(morning.items) === JSON.stringify(["Deep work before noon.", "Call the lab at 09:30"]) && morning.dash === -1, JSON.stringify(morning.items) + " dash " + morning.dash);
+  check("times and deadlines are chips", morning.marks.indexOf("expires 28 Oct") !== -1 && morning.marks.indexOf("18:00") !== -1 && morning.marks.indexOf("09:30") !== -1 && morning.marks.indexOf("28 Oct") === -1, morning.marks.join(" | "));
+  check("morning fits 360", morning.sw <= 360, String(morning.sw));
+  const morningAxe = await axeBad(page);
+  check("axe AA with morning open", !morningAxe.length, morningAxe.join("; "));
   const f = FIXTURE.entries[DAY].fields;
   [f.failureCost, f.ifThen, f.lesson, f.better, f.chosenVsMomentum, f.highlights].forEach(function (answer) {
     check("answer shown exactly once: " + answer.slice(0, 24), text.split(answer).length === 2);
@@ -222,6 +242,19 @@ async function dayCopy(browser) {
 
   await go(page, "#day/2026-10-14");
   check("mood stored only on days[date] shows", (await line(page, "day:evening")) === "Evening \u00b7 mood 4 / energy 3", await line(page, "day:evening"));
+
+  await go(page, "#week/2026-W42");
+  await setFolds(page, true);
+  const watch = await page.evaluate(function () {
+    var field = document.querySelector('[data-field="watch"]');
+    if (!field) return null;
+    return {
+      items: Array.prototype.map.call(field.querySelectorAll("li"), function (li) { return li.textContent; }),
+      dash: field.textContent.indexOf("- "),
+      marks: Array.prototype.map.call(field.querySelectorAll(".jn-mark"), function (node) { return node.textContent; })
+    };
+  });
+  check("dashed field is a list", !!watch && JSON.stringify(watch.items) === JSON.stringify(["Travel on Friday.", "The visa expires 2 Nov"]) && watch.dash === -1 && watch.marks.indexOf("expires 2 Nov") !== -1, JSON.stringify(watch));
   await page.context().close();
 }
 

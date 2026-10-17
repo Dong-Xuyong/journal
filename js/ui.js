@@ -1,12 +1,10 @@
-/* Shared journal UI: folds, cards, read-only to-dos, citations, and
-   announcements. Fold buttons carry data-focus so the frame can put focus
-   back after a re-render. */
+/* Shared journal UI: folds, cards, read-only to-dos, and announcements.
+   Fold buttons carry data-focus so the frame can put focus back after a
+   re-render. Info buttons are not rendered. */
 (function (global) {
   "use strict";
 
   var FOLD_KEY = "journal-folds";
-  var tipOpen = null;
-  var citeSeq = 0;
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -173,64 +171,82 @@
     return { root: root, body: body, heading: heading };
   }
 
-  function citation(key) {
-    var cite = global.JournalCites && typeof global.JournalCites.cite === "function" ? global.JournalCites.cite(key) : null;
-    if (!cite || !cite.text) return null;
-    return cite;
+  // Display-only. The matched characters stay exactly as written.
+  function markExpression() {
+    var month = "January|February|March|April|June|July|August|September|October|November|December|Sept|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec";
+    var day = "\\d{1,2}(?:st|nd|rd|th)?";
+    var date = "(?:\\d{4}-\\d{2}-\\d{2}|" + day + "\\s+(?:" + month + ")(?:\\s+\\d{4})?|(?:" + month + ")\\s+" + day + "(?:,?\\s+\\d{4})?|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4})";
+    var time = "(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?";
+    var deadline = "\\b(?:expires|due|deadline)\\s+(?:on\\s+|by\\s+)?" + date + "\\b";
+    return new RegExp("(" + deadline + "|\\b" + date + "\\b|\\b" + time + "(?!\\d))", "gi");
   }
 
-  function closeTip() {
-    if (!tipOpen) return;
-    tipOpen.tip.hidden = true;
-    tipOpen.btn.setAttribute("aria-expanded", "false");
-    tipOpen = null;
-  }
-
-  function info(citeKey) {
-    var key = String(citeKey || "");
-    var cite = citation(key);
-    var wrap = el("span", "info-wrap");
-    var btn = el("button", "info-btn", "\u24D8");
-    var tip = el("span", "info-tip");
-    citeSeq += 1;
-    btn.type = "button";
-    btn.setAttribute("aria-label", "Why this is here");
-    btn.setAttribute("aria-expanded", "false");
-    btn.setAttribute("aria-controls", "info-tip-" + citeSeq);
-    btn.setAttribute("data-cite", key);
-    tip.id = "info-tip-" + citeSeq;
-    tip.hidden = true;
-    tip.setAttribute("role", "note");
-    if (cite) {
-      tip.appendChild(el("span", "info-text", plain(cite.text)));
-      if (cite.title) tip.appendChild(el("span", "info-by", cite.title + (cite.by ? " (" + cite.by + ")" : "")));
-    } else {
-      tip.appendChild(el("span", "info-text", "A short note on why this prompt is here."));
+  function appendMarked(parent, text) {
+    var value = String(text == null ? "" : text);
+    var re = markExpression();
+    var last = 0;
+    var match;
+    if (!value) return;
+    while ((match = re.exec(value))) {
+      if (!match[0]) {
+        re.lastIndex += 1;
+        continue;
+      }
+      if (match.index > last) parent.appendChild(document.createTextNode(value.slice(last, match.index)));
+      parent.appendChild(el("span", "jn-mark", match[0]));
+      last = match.index + match[0].length;
     }
-    btn.addEventListener("click", function (event) {
-      var opening = tip.hidden;
-      event.stopPropagation();
-      closeTip();
-      if (!opening) return;
-      tip.hidden = false;
-      btn.setAttribute("aria-expanded", "true");
-      tipOpen = { tip: tip, btn: btn };
-    });
-    wrap.appendChild(btn);
-    wrap.appendChild(tip);
-    return wrap;
+    if (last === 0) parent.appendChild(document.createTextNode(value));
+    else if (last < value.length) parent.appendChild(document.createTextNode(value.slice(last)));
   }
 
-  document.addEventListener("click", function (event) {
-    if (event.target.closest && event.target.closest(".info-wrap")) return;
-    closeTip();
-  });
-  document.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape" || !tipOpen) return;
-    var btn = tipOpen.btn;
-    closeTip();
-    btn.focus();
-  });
+  // Lines that start with "- " become a list. The marker is not shown.
+  function fillText(parent, text, opts) {
+    var value = String(text == null ? "" : text).replace(/\r\n/g, "\n");
+    var lines = value.split("\n");
+    var copyClass = opts && opts.copyClass ? opts.copyClass : "day-copy";
+    var listClass = opts && opts.listClass ? opts.listClass : "day-list";
+    var pill = !!(opts && opts.pill);
+    var i = 0;
+    var list;
+    var item;
+    var block;
+    var buf;
+    var j;
+    while (i < lines.length) {
+      if (!String(lines[i]).trim()) {
+        i += 1;
+        continue;
+      }
+      if (/^\s*-\s+/.test(lines[i])) {
+        list = el("ul", listClass);
+        while (i < lines.length && /^\s*-\s+/.test(lines[i])) {
+          item = el("li");
+          appendMarked(item, String(lines[i]).replace(/^\s*-\s+/, ""));
+          list.appendChild(item);
+          i += 1;
+        }
+        parent.appendChild(list);
+        continue;
+      }
+      buf = [];
+      while (i < lines.length && String(lines[i]).trim() && !/^\s*-\s+/.test(lines[i])) {
+        buf.push(lines[i]);
+        i += 1;
+      }
+      block = el("p", pill ? "day-focus-pill" : copyClass);
+      for (j = 0; j < buf.length; j++) {
+        if (j) block.appendChild(el("br"));
+        appendMarked(block, buf[j]);
+      }
+      parent.appendChild(block);
+    }
+  }
+
+  // The circled info buttons were removed. Nothing in the journal renders one.
+  function info() {
+    return null;
+  }
 
   function announce(text) {
     var region = document.getElementById("announce");
@@ -283,6 +299,8 @@
     oneLine: oneLine,
     clip: clip,
     plain: plain,
+    appendMarked: appendMarked,
+    fillText: fillText,
     dots: dots,
     chip: chip,
     STATUS: { error: "is-error", done: "is-done", miss: "is-miss", unknown: "is-unknown" },

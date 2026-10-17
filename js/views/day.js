@@ -102,32 +102,50 @@
     return el("p", "day-missing", "Not written yet: " + names.join(", ") + ".");
   }
 
-  function infoButton(citeKey) {
-    var node;
-    if (!citeKey || !window.JournalUI || typeof JournalUI.info !== "function") return null;
-    node = JournalUI.info(citeKey);
-    if (node && node.classList) node.classList.add("day-info");
-    return node;
-  }
+  // Morning sub-headings. Emoji is presentation only. Accents cover every morning field.
+  var SUB = {
+    focus: { emoji: "\uD83C\uDFAF", accent: "focus" },
+    priorities: { emoji: "\uD83D\uDCCC", accent: "priorities" },
+    failureCost: { emoji: "\uD83D\uDD01", accent: "skip" },
+    ifThen: { accent: "obstacle" },
+    grateful: { emoji: "\uD83D\uDE4F", accent: "grateful" },
+    makeGreat: { emoji: "\uD83C\uDF1F", accent: "great" },
+    affirmation: { accent: "affirm" }
+  };
 
-  function addLabel(wrap, label, citeKey) {
+  function addLabel(wrap, label, emoji) {
     var row = el("div", "day-label-row");
-    row.appendChild(el("p", "day-label", label));
-    var info = infoButton(citeKey);
-    if (info) row.appendChild(info);
+    var node = el("p", "day-label");
+    var mark;
+    if (emoji) {
+      mark = el("span", "day-sub-emoji", emoji);
+      mark.setAttribute("aria-hidden", "true");
+      node.appendChild(mark);
+      node.appendChild(document.createTextNode(" " + label));
+    } else node.textContent = label;
+    row.appendChild(node);
     wrap.appendChild(row);
   }
 
-  function field(parent, id, label, citeKey) {
+  function field(parent, id, label) {
+    var meta = SUB[id] || {};
     var wrap = el("div", "day-field");
     wrap.setAttribute("data-field", id);
-    addLabel(wrap, label, citeKey);
+    if (meta.accent) {
+      wrap.classList.add("day-accent");
+      wrap.setAttribute("data-accent", meta.accent);
+    }
+    addLabel(wrap, label, meta.emoji || "");
     parent.appendChild(wrap);
     return wrap;
   }
 
-  function addCopy(wrap, text) {
-    wrap.appendChild(el("p", "day-copy", JournalUI.plain(text)));
+  function addCopy(wrap, text, opts) {
+    JournalUI.fillText(wrap, JournalUI.plain(text), {
+      copyClass: "day-copy",
+      listClass: "day-list",
+      pill: !!(opts && opts.pill)
+    });
   }
 
   function addList(wrap, lines, ordered, opts) {
@@ -137,9 +155,10 @@
     var item;
     var text;
     for (i = 0; i < lines.length; i++) {
-      text = own ? String(lines[i]) : JournalUI.plain(lines[i]);
-      item = el("li", "", text);
+      text = own ? String(lines[i]) : JournalUI.plain(String(lines[i])).replace(/^\s*-\s+/, "");
+      item = el("li");
       if (own) item.setAttribute("data-own", "");
+      JournalUI.appendMarked(item, text);
       list.appendChild(item);
     }
     wrap.appendChild(list);
@@ -165,7 +184,8 @@
     if (!text) return;
     text = JournalUI.plain(text);
     figure = el("figure", "day-quote");
-    quoteEl = el("blockquote", "", text);
+    quoteEl = el("blockquote");
+    JournalUI.fillText(quoteEl, text, { copyClass: "day-copy", listClass: "day-list" });
     figure.appendChild(quoteEl);
     body = makeFold(parent, "day:quote", "Quote", JournalUI.oneLine(["Quote", JournalUI.clip(text, 48)]), "\uD83D\uDCAC").body;
     body.appendChild(figure);
@@ -178,7 +198,7 @@
     var focus = JournalUI.plain(oneLine(fields.focus));
     var grateful = textLines(fields.grateful);
     var wrap;
-    if (focus) addCopy(field(body, "focus", "Focus"), focus);
+    if (focus) addCopy(field(body, "focus", "Focus"), focus, { pill: true });
     else missing.push("focus");
     if (priorities.lines.length) {
       wrap = field(body, "priorities", "Priorities");
@@ -186,11 +206,11 @@
       addList(wrap, priorities.lines, true, { className: "day-list day-priorities", own: priorities.own });
       if (priorities.note) wrap.appendChild(el("p", "day-note", priorities.note));
     } else missing.push("priorities");
-    if (filled(fields.failureCost)) addCopy(field(body, "failureCost", "If I skip #1", "failure"), String(fields.failureCost).trim());
+    if (filled(fields.failureCost)) addCopy(field(body, "failureCost", "If I skip #1"), String(fields.failureCost).trim());
     else missing.push("if I skip #1");
-    if (filled(fields.ifThen)) addCopy(field(body, "ifThen", "If this happens", "obstacle"), String(fields.ifThen).trim());
+    if (filled(fields.ifThen)) addCopy(field(body, "ifThen", "If this happens"), String(fields.ifThen).trim());
     else missing.push("if this happens");
-    if (grateful.length) addList(field(body, "grateful", "Grateful", "gratitude"), grateful, false);
+    if (grateful.length) addList(field(body, "grateful", "Grateful"), grateful, false);
     else missing.push("grateful");
     if (filled(fields.makeGreat)) addCopy(field(body, "makeGreat", "What would make today great"), String(fields.makeGreat).trim());
     if (filled(fields.affirmation)) addCopy(field(body, "affirmation", "A line to repeat"), String(fields.affirmation).trim());
@@ -207,7 +227,7 @@
       missing.push("wins");
       return;
     }
-    wrap = field(body, "wins", "Wins", "effort");
+    wrap = field(body, "wins", "Wins");
     if (wins.length) addList(wrap, wins, false);
     if (highlights) {
       older = el("div", "day-field");
@@ -276,12 +296,12 @@
     body.appendChild(eveningChips(mood, energy));
     if (!validScore(mood)) missing.push("mood");
     if (!validScore(energy)) missing.push("energy");
-    if (filled(fields.feeling)) addCopy(field(body, "feeling", "Feeling", "feelings"), oneLine(fields.feeling));
+    if (filled(fields.feeling)) addCopy(field(body, "feeling", "Feeling"), oneLine(fields.feeling));
     else missing.push("feeling");
     mountWins(body, fields, missing);
     mountLesson(body, fields, missing);
     if (filled(fields.chosenVsMomentum)) {
-      addCopy(field(body, "chosenVsMomentum", "Choice or autopilot", "reviews"), String(fields.chosenVsMomentum).trim());
+      addCopy(field(body, "chosenVsMomentum", "Choice or autopilot"), String(fields.chosenVsMomentum).trim());
     } else missing.push("choice or autopilot");
     if (tomorrow.length) addList(field(body, "tomorrow", "Tomorrow"), tomorrow, true);
     else missing.push("tomorrow");

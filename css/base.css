@@ -27,6 +27,8 @@
   --jn-s4: #334155;
   --jn-s5: #0369a1;
   --jn-s6: #4d7c0f;
+  --jn-mark-bg: #fef3c7;
+  --jn-mark-line: #d97706;
 }
 
 html.dark {
@@ -46,6 +48,8 @@ html.dark {
   --jn-s4: #cbd5e1;
   --jn-s5: #7dd3fc;
   --jn-s6: #bef264;
+  --jn-mark-bg: #5c4010;
+  --jn-mark-line: #fbbf24;
 }
 
 body.dx,
@@ -536,6 +540,17 @@ body.dx .fold > .fold-bar > .fold-heading > .fold-summary:focus-visible {
   color: var(--jn-muted);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.jn-mark {
+  padding: 0 0.28em;
+  border-radius: 0.35em;
+  background: var(--jn-mark-bg, #fef3c7);
+  box-shadow: inset 0 0 0 1px var(--jn-mark-line, #d97706);
+  color: inherit;
+  font-weight: 600;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .info-wrap {

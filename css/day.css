@@ -71,9 +71,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: var(--jn-tap, 32px);
+  gap: 4px;
   max-width: 100%;
 }
 
@@ -127,26 +125,65 @@
   min-width: 0;
 }
 
-.day-info {
-  display: contents;
+.day-sub-emoji {
+  margin-right: 0.28em;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
-.day-info .info-tip {
-  flex: 1 0 100%;
-  margin-top: 0;
+:root {
+  --day-pill-bg: #dbeafe;
+  --day-pill-line: #2563eb;
+  --day-tint-focus: #e8eefb;
+  --day-tint-priorities: #e6f5f2;
+  --day-tint-skip: #f3e9fb;
+  --day-tint-grateful: #f1f6e4;
+  --day-tint-great: #e7f4fb;
+  --day-tint-obstacle: #eef0f3;
+  --day-tint-affirm: #fbf6e8;
 }
 
-.day-view .info-btn {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
-  border: 1px solid var(--jn-line, var(--dx-border));
-  border-radius: 8px;
-  background: var(--dx-card-solid);
-  color: var(--dx-text);
-  font: 600 0.85rem/1 var(--dx-font, inherit);
+html.dark {
+  --day-pill-bg: #1e3a5f;
+  --day-pill-line: #93c5fd;
+  --day-tint-focus: #17243a;
+  --day-tint-priorities: #132e2b;
+  --day-tint-skip: #2a2038;
+  --day-tint-grateful: #243016;
+  --day-tint-great: #142838;
+  --day-tint-obstacle: #262a30;
+  --day-tint-affirm: #332b16;
+}
+
+.day-view .day-accent {
+  padding: 4px 8px 5px;
+  border-left: 3px solid var(--day-accent, var(--jn-s4));
+  border-radius: 0 8px 8px 0;
+  background: var(--day-tint, transparent);
+  color: inherit;
+}
+
+.day-view .day-accent[data-accent="focus"] { --day-accent: var(--jn-s0); --day-tint: var(--day-tint-focus); }
+.day-view .day-accent[data-accent="priorities"] { --day-accent: var(--jn-s1); --day-tint: var(--day-tint-priorities); }
+.day-view .day-accent[data-accent="skip"] { --day-accent: var(--jn-s2); --day-tint: var(--day-tint-skip); }
+.day-view .day-accent[data-accent="grateful"] { --day-accent: var(--jn-s6); --day-tint: var(--day-tint-grateful); }
+.day-view .day-accent[data-accent="great"] { --day-accent: var(--jn-s5); --day-tint: var(--day-tint-great); }
+.day-view .day-accent[data-accent="obstacle"] { --day-accent: var(--jn-s4); --day-tint: var(--day-tint-obstacle); }
+.day-view .day-accent[data-accent="affirm"] { --day-accent: var(--jn-s3); --day-tint: var(--day-tint-affirm); }
+
+.day-view .day-focus-pill {
+  display: inline-block;
+  max-width: 100%;
+  margin: 2px 0 0;
+  padding: 1px 10px;
+  border: 1px solid var(--day-pill-line, #2563eb);
+  border-radius: 999px;
+  background: var(--day-pill-bg, #dbeafe);
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .day-chips {

@@ -55,10 +55,10 @@
         "energy": 4,
         "focus": "Ship it!",
         "priorities": ["Finish chapter 3 draft", "Call the bank", "Run 5k"],
-        "failureCost": "The draft slips another week.",
+        "failureCost": "The draft slips another week. The window expires 28 Oct at 18:00.",
         "ifThen": "If I open Slack, then I close it and write one paragraph.",
         "grateful": ["Coffee", "Sun", "Mum"],
-        "makeGreat": "Deep work before noon.",
+        "makeGreat": "- Deep work before noon.\n- Call the lab at 09:30",
         "affirmation": "I finish what I start.",
         "feeling": "Calm",
         "wins": ["Wrote before email", "Ran in the rain"],
@@ -93,7 +93,7 @@
         "rootCause": "Phone in bed.",
         "grateful": ["Ana", "Health", "Time"],
         "lesson": "Protect mornings.",
-        "watch": "Travel on Friday.",
+        "watch": "- Travel on Friday.\n- The visa expires 2 Nov",
         "goals": {
           "thesis": { "progress": "Draft 60%", "score": 3, "next": "Finish section 3.2" },
           "health": { "progress": "3 runs", "score": 4, "next": "Long run Sunday" }
