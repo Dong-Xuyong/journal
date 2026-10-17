@@ -322,6 +322,37 @@ async function saving(browser) {
   await page.context().close();
 }
 
+async function links(browser) {
+  const page = await newPage(browser);
+  async function landed(url) {
+    await page.goto(url);
+    await page.waitForSelector("#view > *");
+    await page.waitForTimeout(150);
+    return page.evaluate(function () {
+      return { path: location.pathname, hash: location.hash, heading: document.getElementById("period-heading").textContent };
+    });
+  }
+  const root = new URL(BASE).pathname;
+  let at = await landed(BASE + "#day/2026-10-17");
+  check("hub link /journal/#day/<date> opens that day", at.hash === "#day/2026-10-17" && /October 17, 2026/.test(at.heading), JSON.stringify(at));
+  at = await landed(BASE + "#habits");
+  check("hub link /journal/#habits opens Habits", at.hash === "#habits" && at.heading === "Habits", JSON.stringify(at));
+  at = await landed(BASE + "#habits/all");
+  check("old #habits/all still opens Habits", at.heading === "Habits", JSON.stringify(at));
+  at = await landed(BASE);
+  check("bare /journal/ opens today", /^#day\/\d{4}-\d{2}-\d{2}$/.test(at.hash), JSON.stringify(at));
+  for (const hash of ["#week/2026-W42", "#month/2026-10", "#quarter/2026-Q4", "#year/2026"]) {
+    at = await landed(BASE + hash);
+    check("route " + hash + " opens", at.hash === hash, JSON.stringify(at));
+  }
+  if (process.env.REDIRECT === "1") {
+    at = await landed(BASE + "next/#week/2026-W42");
+    check("/journal/next/ redirects to /journal/ and keeps the hash", at.path === root && at.hash === "#week/2026-W42", JSON.stringify(at));
+  }
+  check("no page errors on old links", !page.errors.length, page.errors.join("; "));
+  await page.context().close();
+}
+
 async function main() {
   await ensureServer();
   const browser = await chromium.launch();
@@ -330,6 +361,7 @@ async function main() {
     await dayCopy(browser);
     await keyboard(browser);
     await reflections(browser);
+    await links(browser);
     if (!process.env.BASE) await saving(browser);
   } finally {
     await browser.close();
