@@ -438,14 +438,21 @@
     var metrics = el("div", "glance-metrics");
     var checks = el("div", "glance-checks");
     var checkLabel = el("span", "glance-checks-label", "Check-ins");
+    var logged = countText(roll.logged);
+    var days = countText(roll.days);
     var points = [];
     var i;
     metrics.appendChild(metricChip("Mood", roll.mood, moodDot == null ? "" : FACES[moodDot]));
     metrics.appendChild(metricChip("Energy", roll.energy, statAvg(roll.energy) == null ? "" : "⚡"));
     fold.body.appendChild(metrics);
-    checkLabel.setAttribute("aria-hidden", "true");
-    checks.appendChild(checkLabel);
-    checks.appendChild(JournalUI.dots(countText(roll.logged), countText(roll.days), "Check-ins"));
+    // One dot per day only fits a week at 360px; longer spans get a count.
+    if (days <= 7) {
+      checkLabel.setAttribute("aria-hidden", "true");
+      checks.appendChild(checkLabel);
+      checks.appendChild(JournalUI.dots(logged, days, "Check-ins"));
+    } else {
+      checks.appendChild(JournalUI.chip({ label: "Check-ins", text: logged + " of " + days + " days" }));
+    }
     fold.body.appendChild(checks);
     if (!fmtScore(roll.mood) && !fmtScore(roll.energy)) fold.body.appendChild(el("p", "period-prose", "No check-ins yet"));
     for (i = 0; i < kids.length; i++) {
@@ -495,9 +502,10 @@
       var full = JournalData.label(kids[i].key) || name;
       link.href = "#" + kindName + "/" + kids[i].key;
       link.setAttribute("data-focus", "child:" + kids[i].key);
-      link.setAttribute("aria-label", (full.indexOf(name) === -1 ? name + ", " + full : full) + ", " + phrase);
+      link.setAttribute("aria-label", name + " " + phrase + (full === name ? "" : ", " + full));
       link.appendChild(el("span", "period-child-name", name));
       dot.setAttribute("aria-hidden", "true");
+      link.appendChild(document.createTextNode(" "));
       link.appendChild(dot);
       link.appendChild(el("span", "period-child-mood", phrase));
       fold.body.appendChild(link);

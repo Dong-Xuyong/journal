@@ -66,6 +66,7 @@
       node.appendChild(emoji);
     }
     if (opts.label) node.appendChild(el("span", "jn-chip-label", String(opts.label)));
+    if (opts.label && (opts.max != null || opts.text != null)) node.appendChild(document.createTextNode(" "));
     if (opts.max != null) node.appendChild(dots(opts.value, opts.max, opts.label));
     else if (opts.text != null) node.appendChild(el("span", "jn-chip-text", String(opts.text)));
     return node;
