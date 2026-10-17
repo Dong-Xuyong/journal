@@ -21,72 +21,6 @@
     return node;
   }
 
-  // Same-signature stand-ins for the helpers builder 1 adds to JournalUI.
-  // The real helpers win as soon as they exist. These never touch storage.
-  function plainText(text) {
-    var value = String(text == null ? "" : text);
-    if (window.JournalUI && typeof JournalUI.plain === "function") return JournalUI.plain(value);
-    value = value.replace(/!\?|\?!/g, "?");
-    value = value.replace(/!+(?=\s|$)/g, ".");
-    return value.replace(/!/g, "");
-  }
-
-  function dots(value, max, label) {
-    var span;
-    var empty;
-    var n;
-    var i;
-    var dot;
-    if (window.JournalUI && typeof JournalUI.dots === "function") return JournalUI.dots(value, max, label);
-    span = document.createElement("span");
-    empty = value == null;
-    n = empty ? 0 : value;
-    span.className = "jn-dots" + (empty ? " is-empty" : "");
-    span.setAttribute("role", "img");
-    span.setAttribute("aria-label", empty ? (label + " not logged") : (label + " " + n + " of " + max));
-    for (i = 0; i < max; i++) {
-      dot = document.createElement("span");
-      dot.className = "jn-dot" + (!empty && i < n ? " on" : "");
-      span.appendChild(dot);
-    }
-    return span;
-  }
-
-  function chip(opts) {
-    var node;
-    var emoji;
-    opts = opts || {};
-    if (window.JournalUI && typeof JournalUI.chip === "function") return JournalUI.chip(opts);
-    node = document.createElement("span");
-    node.className = "jn-chip";
-    if (opts.emoji) {
-      emoji = document.createElement("span");
-      emoji.setAttribute("aria-hidden", "true");
-      emoji.textContent = opts.emoji;
-      node.appendChild(emoji);
-    }
-    node.appendChild(document.createTextNode(opts.label || ""));
-    if (opts.max != null) node.appendChild(dots(opts.value == null ? null : opts.value, opts.max, opts.label || ""));
-    else if (opts.text != null) node.appendChild(document.createTextNode(String(opts.text)));
-    return node;
-  }
-
-  function ensureFoldEmoji(root, emoji) {
-    var button;
-    var slot;
-    var line;
-    if (!emoji || !root) return;
-    button = root.querySelector(".fold-summary");
-    if (!button || button.querySelector(".fold-emoji")) return;
-    slot = document.createElement("span");
-    slot.className = "fold-emoji";
-    slot.setAttribute("aria-hidden", "true");
-    slot.textContent = emoji;
-    line = button.querySelector(".fold-line");
-    if (line) button.insertBefore(slot, line);
-    else button.appendChild(slot);
-  }
-
   function validScore(n) {
     return n === 1 || n === 2 || n === 3 || n === 4 || n === 5;
   }
@@ -150,7 +84,7 @@
   }
 
   function morningSummary(fields, priorities) {
-    var focus = plainText(oneLine(fields.focus));
+    var focus = JournalUI.plain(oneLine(fields.focus));
     var n = priorities.lines.length;
     if (!focus && !n) return "Morning \u00b7 nothing yet";
     return JournalUI.oneLine(["Morning", focus ? "focus: " + JournalUI.clip(focus, 28) : "", n ? countLabel(n, "priority", "priorities") : ""]);
@@ -204,7 +138,7 @@
   }
 
   function addCopy(wrap, text) {
-    wrap.appendChild(el("p", "day-copy", plainText(text)));
+    wrap.appendChild(el("p", "day-copy", JournalUI.plain(text)));
   }
 
   function addList(wrap, lines, ordered, opts) {
@@ -214,7 +148,7 @@
     var item;
     var text;
     for (i = 0; i < lines.length; i++) {
-      text = own ? String(lines[i]) : plainText(lines[i]);
+      text = own ? String(lines[i]) : JournalUI.plain(lines[i]);
       item = el("li", "", text);
       if (own) item.setAttribute("data-own", "");
       list.appendChild(item);
@@ -224,7 +158,6 @@
 
   function makeFold(parent, id, title, summary, emoji) {
     var made = JournalUI.fold({ id: id, title: title, level: 3, summary: summary, emoji: emoji || "" });
-    ensureFoldEmoji(made.root, emoji);
     if (made.root.classList) made.root.classList.add("dx-card", "day-fold");
     made.root.setAttribute("data-fold", id);
     if (made.body && made.body.classList) made.body.classList.add("day-fold-body");
@@ -241,7 +174,7 @@
     if (typeof quote === "string") text = quote.trim();
     else if (quote && typeof quote.text === "string") text = quote.text.trim();
     if (!text) return;
-    text = plainText(text);
+    text = JournalUI.plain(text);
     figure = el("figure", "day-quote");
     quoteEl = el("blockquote", "", text);
     figure.appendChild(quoteEl);
@@ -253,7 +186,7 @@
     var priorities = prioritiesOf(fields, todos);
     var body = makeFold(parent, "day:morning", "Morning", morningSummary(fields, priorities), "\uD83C\uDF05").body;
     var missing = [];
-    var focus = plainText(oneLine(fields.focus));
+    var focus = JournalUI.plain(oneLine(fields.focus));
     var grateful = textLines(fields.grateful);
     var wrap;
     if (focus) addCopy(field(body, "focus", "Focus"), focus);
@@ -329,10 +262,10 @@
     var moodChip;
     var energyChip;
     if (moodScore) moodOpts.emoji = FACES[moodScore - 1];
-    moodChip = chip(moodOpts);
-    energyChip = chip({ emoji: "\u26A1", label: "Energy", value: energyScore, max: 5 });
-    if (moodChip && moodChip.setAttribute) moodChip.setAttribute("data-field", "mood");
-    if (energyChip && energyChip.setAttribute) energyChip.setAttribute("data-field", "energy");
+    moodChip = JournalUI.chip(moodOpts);
+    energyChip = JournalUI.chip({ emoji: "\u26A1", label: "Energy", value: energyScore, max: 5 });
+    moodChip.setAttribute("data-field", "mood");
+    energyChip.setAttribute("data-field", "energy");
     row.appendChild(moodChip);
     row.appendChild(energyChip);
     return row;
@@ -341,8 +274,8 @@
   function eveningDots(mood, energy) {
     var wrap = el("span", "day-eve-dots");
     wrap.setAttribute("aria-hidden", "true");
-    wrap.appendChild(dots(scoreOrNull(mood), 5, "Mood"));
-    wrap.appendChild(dots(scoreOrNull(energy), 5, "Energy"));
+    wrap.appendChild(JournalUI.dots(scoreOrNull(mood), 5, "Mood"));
+    wrap.appendChild(JournalUI.dots(scoreOrNull(energy), 5, "Energy"));
     return wrap;
   }
 
@@ -355,7 +288,7 @@
     var missing = [];
     var tomorrow = textLines(fields.tomorrow, 3);
     var line;
-    if (button) button.appendChild(eveningDots(mood, energy));
+    button.appendChild(eveningDots(mood, energy));
     body.appendChild(eveningChips(mood, energy));
     if (!validScore(mood)) missing.push("mood");
     if (!validScore(energy)) missing.push("energy");
@@ -376,7 +309,6 @@
     var slot = el("div", "day-reflect");
     slot.setAttribute("data-day-reflect", key);
     parent.appendChild(slot);
-    // Reflection's fold emoji is builder 4's. Leave this slot empty.
     if (window.JournalReflect && typeof JournalReflect.mount === "function") {
       JournalReflect.mount(slot, { mode: "day", day: key });
     }

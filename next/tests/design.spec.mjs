@@ -208,8 +208,9 @@ async function helpers(page) {
     };
     return result;
   });
-  const accessible = await page.getByRole("button", { name: /Quote · Keep going\./ }).count();
-  const namedEmoji = await page.getByRole("button", { name: /💬/ }).count();
+  const probe = page.locator("#helper-probe");
+  const accessible = await probe.getByRole("button", { name: /Quote · Keep going\./ }).count();
+  const namedEmoji = await probe.getByRole("button", { name: /💬/ }).count();
   check("own", "fold button accessible name omits the emoji", accessible === 1 && namedEmoji === 0, accessible + " emoji " + namedEmoji);
   await page.evaluate(function () {
     var holder = document.getElementById("helper-probe");
@@ -401,7 +402,7 @@ async function scanRoute(page, hash) {
       if (name.toLowerCase().indexOf("ring") !== -1) rings.push(name);
       var box = el.getBoundingClientRect();
       var radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-      if (box.width > 24 && box.height > 24 && radius >= box.width / 2 - 0.5 && radius >= box.height / 2 - 0.5) rings.push("circle " + Math.round(box.width) + " " + name);
+      if (box.width > 24 && box.height > 24 && Math.abs(box.width - box.height) < 4 && radius >= box.width / 2 - 0.5 && radius >= box.height / 2 - 0.5) rings.push("circle " + Math.round(box.width) + " " + name);
     });
     Array.prototype.forEach.call(document.querySelectorAll("#view *"), function (el) {
       if (hidden(el) || el.tagName === "H2") return;
