@@ -105,28 +105,6 @@
     return n;
   }
 
-  function bestStreak(id, today) {
-    var day = today;
-    var keys = [];
-    var i;
-    var best = 0;
-    var run = 0;
-    for (i = 0; i < HISTORY_DAYS; i++) {
-      keys.push(day);
-      day = JournalData.shift(day, -1);
-      if (!day) break;
-    }
-    for (i = keys.length - 1; i >= 0; i--) {
-      if (JournalData.habitStatus(keys[i], id) === "done") {
-        run += 1;
-        if (run > best) best = run;
-      } else {
-        run = 0;
-      }
-    }
-    return best;
-  }
-
   function daySummary(day, defs) {
     var done = 0;
     var miss = 0;
@@ -217,62 +195,44 @@
     return made;
   }
 
-  function renderToday(defs, today) {
+  function renderToday(defs, today, selected, onSelect) {
     var day = daySummary(today, defs);
     var line = day.state === "none" ? "Today \u00b7 no log yet" : "Today \u00b7 " + day.done + " of " + defs.length + " done";
     var made = section("habit-today", "Today", line, "\uD83D\uDCC5");
     var list = node("ul", "today-list");
     mountTodayDots(made, day.state === "none" ? null : day.done, defs.length);
-    defs.forEach(function (def) {
-      var status = JournalData.habitStatus(today, def.id);
-      var item = node("li", "today-item");
-      var emoji = node("span", "habit-emoji", def.emoji || "");
-      emoji.setAttribute("aria-hidden", "true");
-      item.setAttribute("data-today-habit", def.id);
-      item.appendChild(emoji);
-      item.appendChild(node("span", "today-name", labelOf(def)));
-      item.appendChild(node("span", "today-pill " + statusClass(status), statusText(status)));
-      list.appendChild(item);
+    defs.forEach(function (def, index) {
+      list.appendChild(habitTile(def, today, selected, onSelect, index));
     });
     made.body.appendChild(list);
     return made.root;
   }
 
-  function renderStreaks(defs, today, selected, onSelect) {
-    var onStreak = 0;
-    var i;
-    var made;
-    var grid;
-    for (i = 0; i < defs.length; i++) if (currentStreak(defs[i].id, today) > 0) onStreak += 1;
-    made = section("habit-streaks", "Streaks", onStreak === 0 ? "Streaks \u00b7 no streak yet" : onStreak === 1 ? "Streaks \u00b7 1 on a streak" : "Streaks \u00b7 " + onStreak + " on a streak", "\uD83D\uDD25");
-    grid = node("div", "habit-grid");
-    defs.forEach(function (def) {
-      grid.appendChild(habitTile(def, today, selected, onSelect));
-    });
-    made.body.appendChild(grid);
-    return made.root;
-  }
-
-  function habitTile(def, today, selected, onSelect) {
+  function habitTile(def, today, selected, onSelect, index) {
     var status = JournalData.habitStatus(today, def.id);
     var current = currentStreak(def.id, today);
-    var best = bestStreak(def.id, today);
     var label = labelOf(def);
-    var days = current === 1 ? "1 day" : String(current) + " days";
-    var phrase = label + " \u00b7 " + days + " \u00b7 best " + best + " \u00b7 today " + statusText(status);
-    var row = node("div", "streak-row" + (selected === def.id ? " on" : ""));
+    var row = node("li", "today-item streak-row" + (selected === def.id ? " on" : ""));
     var open = button("habit-open");
     var emoji = node("span", "habit-emoji", def.emoji || "");
+    var check = node("span", "habit-check " + statusClass(status));
+    var streak = node("span", "habit-streak", String(current) + "d");
+    var spoken = node("span", "sr-only", "today " + statusText(status));
     row.setAttribute("data-habit", def.id);
+    row.setAttribute("data-today-habit", def.id);
     row.setAttribute("data-streak", String(current));
-    row.setAttribute("data-best", String(best));
     row.setAttribute("data-status", status);
     emoji.setAttribute("aria-hidden", "true");
+    check.setAttribute("aria-hidden", "true");
     open.setAttribute("aria-pressed", selected === def.id ? "true" : "false");
     open.setAttribute("data-select", def.id);
     open.setAttribute("data-focus", "tile:" + def.id);
+    open.setAttribute("data-hue", "s" + (index % 7));
     open.appendChild(emoji);
-    open.appendChild(node("span", "streak-text", phrase));
+    open.appendChild(node("span", "habit-name", label));
+    open.appendChild(check);
+    open.appendChild(streak);
+    open.appendChild(spoken);
     open.addEventListener("click", function () {
       onSelect(selected === def.id ? "" : def.id, "tile:");
     });
@@ -704,7 +664,7 @@
     show(active, false);
 
     function addRow(id, label, rate, index, pressed) {
-      var row = button("rate-row" + (pressed ? " on" : ""));
+      var row = button("rate-row" + (id ? " s" + (index % 7) : "") + (pressed ? " on" : ""));
       var bar = node("span", "rate-bar" + (id ? " hue s" + (index % 7) : ""));
       var fill = node("i");
       var swatch = node("span", "rate-swatch" + (id ? " s" + (index % 7) : " overall"));
@@ -753,8 +713,7 @@
       render(root, { key: next, today: today, focus: focus });
     }
 
-    root.appendChild(renderToday(defs, today));
-    root.appendChild(renderStreaks(defs, today, selected, onSelect));
+    root.appendChild(renderToday(defs, today, selected, onSelect));
     root.appendChild(renderHeat(defs, today, selected, onSelect));
     root.appendChild(renderTrend("week", defs, today, selected, onSelect));
     root.appendChild(renderTrend("month", defs, today, selected, onSelect));

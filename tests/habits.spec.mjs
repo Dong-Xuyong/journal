@@ -450,12 +450,12 @@ async function main() {
     await page.locator("[data-fold='habit-today']").waitFor();
 
     const closed = await page.$$eval("#view .fold", function (nodes) { return nodes.map(function (el) { return el.open; }); });
-    assert.ok(closed.length === 5 && closed.every(function (open) { return open === false; }), "folds start closed");
+    assert.ok(closed.length === 4 && closed.every(function (open) { return open === false; }), "folds start closed");
     const todayText = await page.locator("[data-fold='habit-today'] .fold-line").innerText();
     assert.match(todayText, /Today/);
     assert.equal(todayText, "Today · 4 of 7 done");
     assert.equal(await page.locator("[data-fold='habit-effort']").count(), 0, "no Effort fold");
-    assert.match(await page.locator("[data-fold='habit-streaks'] .fold-line").innerText(), /Streaks · 4 on a streak/);
+    assert.equal(await page.locator("[data-fold='habit-streaks']").count(), 0, "streaks live on the today list");
     assert.match(await page.locator("[data-fold='habit-year'] .fold-line").innerText(), /Year in days · 17 days logged/);
     assert.match(await page.locator("[data-fold='habit-weeks'] .fold-line").innerText(), /Week by week · \d+% done/);
     assert.match(await page.locator("[data-fold='habit-months'] .fold-line").innerText(), /Month by month · \d+% done/);
@@ -465,14 +465,17 @@ async function main() {
     const emojiCounts = await page.$$eval("#view .fold-summary", function (nodes) {
       return nodes.map(function (el) { return el.querySelectorAll(".fold-emoji").length; });
     });
-    assert.deepEqual(emojiCounts, [1, 1, 1, 1, 1]);
+    assert.deepEqual(emojiCounts, [1, 1, 1, 1]);
     const todayDots = page.locator("[data-fold='habit-today'] .fold-summary .jn-dots");
     assert.equal(await todayDots.getAttribute("aria-hidden"), "true");
     assert.equal(await todayDots.locator(".jn-dot").count(), 7);
     assert.equal(await todayDots.locator(".jn-dot.on").count(), 4);
-    assert.equal(await page.locator("[data-today-habit='thesis'] .today-name").textContent(), "Read.");
+    assert.equal(await page.locator("[data-today-habit='thesis'] .habit-name").textContent(), "Read.");
     assert.equal((await page.locator("#view").textContent()).indexOf("Read!"), -1);
-    assert.match(await page.locator("[data-habit='thesis'] .streak-text").textContent(), /^Read\. · \d+ days? · best \d+ · today /);
+    assert.match(await page.locator("[data-habit='thesis'] .habit-streak").textContent(), /^\d+d$/);
+    assert.equal((await page.locator("[data-habit='thesis']").textContent()).indexOf("best"), -1);
+    assert.equal(await page.locator("[data-habit='thesis'] .habit-check.is-done").count(), 1);
+    assert.equal(await page.locator("#view input, #view textarea").count(), 0, "habits stay read-only");
     const geometry = await page.evaluate(function () {
       var folds = Array.prototype.slice.call(document.querySelectorAll("#view > .fold"));
       var heights = folds.map(function (el) { return el.getBoundingClientRect().height; });
@@ -496,10 +499,8 @@ async function main() {
     await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-closed-light.png" });
     await page.locator("[data-fold='habit-today'] .fold-summary").click();
     await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-today-open-light.png" });
-    await page.locator("[data-fold='habit-today'] .fold-summary").click();
-    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
     await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-streaks-open-light.png" });
-    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
+    await page.locator("[data-fold='habit-today'] .fold-summary").click();
 
     const summariesLoc = page.locator("#view .fold-summary");
     const summaryCount = await summariesLoc.count();
@@ -656,10 +657,10 @@ async function main() {
       return nodes.every(function (el) { return !el.open; });
     });
     assert.equal(othersClosed, true);
-    await page.locator("[data-fold='habit-streaks'] .fold-summary").click();
+    await page.locator("[data-fold='habit-year'] .fold-summary").click();
     await page.waitForTimeout(20);
     const parsed = await page.evaluate(function () { return JSON.parse(localStorage.getItem("journal-folds") || "{}"); });
-    assert.equal(parsed["habit-streaks"], true);
+    assert.equal(parsed["habit-year"], true);
     assert.equal(parsed["habit-today"], true);
     assert.equal(puts.length, 0);
     assert.deepEqual(errors, []);
@@ -688,6 +689,15 @@ async function main() {
     assert.equal(stopSize, 0, "trend stops are 32px");
     await page.evaluate(function () { document.documentElement.classList.add("dark"); });
     await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    const accents = await page.evaluate(function () {
+      return Array.prototype.map.call(document.querySelectorAll(".habit-open"), function (el) {
+        var style = getComputedStyle(el);
+        return style.borderLeftColor + "|" + style.backgroundColor;
+      });
+    });
+    assert.ok(new Set(accents).size >= 4, "habit rows use more than one accent, got " + accents.join("; "));
+    assert.ok(accents.every(function (pair) { return pair.indexOf("31, 31, 31") === -1; }), "rows are not the plain grey card");
+    await page.screenshot({ path: "/opt/cursor/artifacts/habits-360-open-dark.png" });
     assertNoXScroll(await scrollWidth(page), "dark open");
     await assertNoBannedColor(page, "dark");
     await axe(page, "axe dark open");
